@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  stock-prediction-dev:
+    build: .
+    container_name: zhitou-prediction-dev
+    ports:
+      - "9000:9000"
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 挂载源代码，支持热重载
+      - .:/app
+      - /app/venv  # 排除venv目录
+    restart: unless-stopped
+    command: ["python", "app.py"]
+    networks:
+      - stock-prediction-network
+
+networks:
+  stock-prediction-network:
+    driver: bridge

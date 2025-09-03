@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智投预测 - AI股市指数预测平台</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header-with-logo">
+            <img src="logo.svg" alt="智投预测Logo" class="logo-image">
+            <h1 class="title">智投预测 - AI股市指数预测</h1>
+        </div>
+
+        <div class="predictions">
+            <div class="prediction-item" data-index="sh000001">
+                <div class="index-info">
+                    <h3>上证综合指数 (Shanghai Composite Index)</h3>
+                    <span class="code">SH000001</span>
+                </div>
+                <div class="metrics">
+                    <div class="metric-group">
+                        <span class="label">当前价格</span>
+                        <span class="value" id="sh000001-current">3,245.67</span>
+                        <span class="change" id="sh000001-change">+0.38%</span>
+                    </div>
+                    <div class="metric-group">
+                        <span class="label">明日预测</span>
+                        <span class="value" id="sh000001-predicted">3,268.45</span>
+                        <span class="change" id="sh000001-pred-change">+0.70%</span>
+                    </div>
+                    <div class="confidence-group">
+                        <span class="confidence-label">AI信心指数:</span>
+                        <span class="confidence" id="sh000001-confidence">78%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prediction-item" data-index="sz399001">
+                <div class="index-info">
+                    <h3>深证成分指数 (Shenzhen Component Index)</h3>
+                    <span class="code">SZ399001</span>
+                </div>
+                <div class="metrics">
+                    <div class="metric-group">
+                        <span class="label">当前价格</span>
+                        <span class="value" id="sz399001-current">11,234.89</span>
+                        <span class="change negative" id="sz399001-change">-0.40%</span>
+                    </div>
+                    <div class="metric-group">
+                        <span class="label">明日预测</span>
+                        <span class="value" id="sz399001-predicted">11,298.76</span>
+                        <span class="change positive" id="sz399001-pred-change">+0.57%</span>
+                    </div>
+                    <div class="confidence-group">
+                        <span class="confidence-label">AI信心指数:</span>
+                        <span class="confidence" id="sz399001-confidence">72%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prediction-item" data-index="sz399006">
+                <div class="index-info">
+                    <h3>创业板综合指数 (ChiNext Composite Index)</h3>
+                    <span class="code">SZ399006</span>
+                </div>
+                <div class="metrics">
+                    <div class="metric-group">
+                        <span class="label">当前价格</span>
+                        <span class="value" id="sz399006-current">2,456.78</span>
+                        <span class="change positive" id="sz399006-change">+0.78%</span>
+                    </div>
+                    <div class="metric-group">
+                        <span class="label">明日预测</span>
+                        <span class="value" id="sz399006-predicted">2,487.34</span>
+                        <span class="change positive" id="sz399006-pred-change">+1.24%</span>
+                    </div>
+                    <div class="confidence-group">
+                        <span class="confidence-label">AI信心指数:</span>
+                        <span class="confidence" id="sz399006-confidence">85%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prediction-item" data-index="sh000688">
+                <div class="index-info">
+                    <h3>科创板50指数 (STAR Market 50 Index)</h3>
+                    <span class="code">SH000688</span>
+                </div>
+                <div class="metrics">
+                    <div class="metric-group">
+                        <span class="label">当前价格</span>
+                        <span class="value" id="sh000688-current">987.65</span>
+                        <span class="change negative" id="sh000688-change">-0.85%</span>
+                    </div>
+                    <div class="metric-group">
+                        <span class="label">明日预测</span>
+                        <span class="value" id="sh000688-predicted">995.23</span>
+                        <span class="change positive" id="sh000688-pred-change">+0.77%</span>
+                    </div>
+                    <div class="confidence-group">
+                        <span class="confidence-label">AI信心指数:</span>
+                        <span class="confidence" id="sh000688-confidence">69%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <p><strong>AI算法:</strong> 深度学习 + 机器学习融合模型 | <strong>数据维度:</strong> 15项技术指标 | <strong>预测周期:</strong> 明日收盘
+            </p>
+            <p><strong>实时更新:</strong> <span id="lastUpdate">--</span> | <strong>预测准确率:</strong> 73.5% (近期表现)</p>
+        </div>
+
+        <div class="disclaimer">
+            <p><strong>风险提示:</strong> 本平台基于AI技术提供指数预测，结果仅供参考，不构成投资建议。股市有风险，投资需谨慎。</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
