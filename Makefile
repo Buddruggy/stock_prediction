@@ -212,16 +212,7 @@ pull:
 	@echo "$(GREEN)✅ 镜像拉取完成$(RESET)"
 
 ## 运行容器
-run: stop
-	@echo "$(GREEN)🚀 启动容器...$(RESET)"
-	docker run -d \
-		--name $(CONTAINER_NAME) \
-		-p $(HOST_PORT):$(CONTAINER_PORT) \
-		-e FLASK_ENV=production \
-		--restart unless-stopped \
-		$(IMAGE_NAME):latest
-	@echo "$(GREEN)✅ 容器启动完成$(RESET)"
-	@echo "$(BLUE)🌐 访问地址: http://localhost:$(HOST_PORT)$(RESET)"
+# run目标已废弃，请使用 make up 或 make legacy
 
 ## 运行开发环境 (Docker容器方式)
 dev-docker: stop
@@ -359,21 +350,20 @@ load-release:
 		echo "$(RED)❌ 发布包不存在$(RESET)"; \
 	fi
 
-## 快速启动（构建并运行）
-quick: build run health
+# 旧的quick目标已废弃，请使用第一个quick目标
 
 ## 显示资源使用情况
 stats:
 	@echo "$(BLUE)📈 资源使用情况:$(RESET)"
-	docker stats $(CONTAINER_NAME) --no-stream 2>/dev/null || \
-	docker stats $(CONTAINER_NAME)-dev --no-stream 2>/dev/null || \
+	docker stats zhitou-prediction-backend zhitou-prediction-frontend --no-stream 2>/dev/null || \
+	docker stats zhitou-prediction --no-stream 2>/dev/null || \
 	echo "$(YELLOW)⚠️ 容器未运行$(RESET)"
 
 ## 备份数据
 backup:
 	@echo "$(GREEN)💾 备份数据...$(RESET)"
 	mkdir -p backups
-	docker exec $(CONTAINER_NAME) tar czf - /app/data 2>/dev/null > backups/backup-$(shell date +%Y%m%d-%H%M%S).tar.gz || \
+	docker exec zhitou-prediction-backend tar czf - /app/data 2>/dev/null > backups/backend-backup-$(shell date +%Y%m%d-%H%M%S).tar.gz || \
 	echo "$(YELLOW)⚠️ 无数据需要备份$(RESET)"
 
 ## 显示镜像信息

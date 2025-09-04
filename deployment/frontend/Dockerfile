@@ -11,7 +11,7 @@ COPY frontend/package*.json ./
 
 # 安装依赖 - 使用国内镜像源加速
 RUN npm config set registry https://registry.npmmirror.com && \
-    npm ci --only=production
+    npm install
 
 # 复制前端源代码
 COPY frontend/ .
@@ -28,8 +28,7 @@ COPY deployment/frontend/nginx.conf /etc/nginx/nginx.conf
 # 复制构建好的文件到nginx目录
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 复制静态资源
-COPY src/frontend/static/images/ /usr/share/nginx/html/images/
+# 静态资源已经包含在Vue构建产物中
 
 # 创建非root用户
 RUN addgroup -g 1001 -S app && \

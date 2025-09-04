@@ -7,8 +7,6 @@ WORKDIR /app
 # 设置环境变量
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=src/backend/app.py
-ENV FLASK_ENV=production
 ENV DEBIAN_FRONTEND=noninteractive
 
 # 使用国内镜像源加速包安装（可选）
@@ -26,14 +24,14 @@ RUN apt-get update --fix-missing && \
     && rm -rf /var/tmp/*
 
 # 复制requirements文件
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # 安装Python依赖 - 使用国内镜像源加速
 RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple/ && \
     pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
 # 复制应用代码
-COPY . .
+COPY backend/ ./backend/
 
 # 创建非root用户
 RUN useradd --create-home --shell /bin/bash app && \
@@ -42,10 +40,11 @@ USER app
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9001/api/status || exit 1
+    CMD curl -f http://localhost:9001/health || exit 1
 
 # 暴露端口
 EXPOSE 9001
 
-# 启动命令 - 兼容模式，如果新架构文件存在则使用FastAPI，否则使用Flask
-CMD ["sh", "-c", "if [ -f backend/app/main.py ]; then cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 9000; else python src/backend/app.py; fi"]
+# 启动命令 - 使用FastAPI
+WORKDIR /app/backend
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9001"]

@@ -5,7 +5,7 @@
       <el-header class="app-header">
         <div class="header-content">
           <div class="logo-section">
-            <img src="/favicon.svg" alt="智投预测" class="logo" />
+            <img src="/logo.svg" alt="智投预测" class="logo" />
             <h1 class="title">智投预测</h1>
             <span class="subtitle">AI股市指数预测平台</span>
           </div>
