@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.c
 
 # 复制后端代码
 COPY backend/ ./backend/
-COPY shared/ ./shared/
+# COPY shared/ ./shared/  # 暂时注释掉，shared目录还未创建
 
 # 创建非root用户
 RUN useradd --create-home --shell /bin/bash app && \
@@ -47,4 +47,5 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # 启动命令
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+WORKDIR /app/backend
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
