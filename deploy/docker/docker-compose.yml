@@ -7,7 +7,7 @@ services:
       dockerfile: deploy/docker/Dockerfile
     container_name: zhitou-prediction
     ports:
-      - "80:80"
+      - "9000:9000"
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
