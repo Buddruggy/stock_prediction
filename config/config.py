@@ -14,7 +14,7 @@ class Config:
     
     # 服务器配置
     HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', 9000))
+    PORT = int(os.getenv('PORT', 80))
     DEBUG = os.getenv('FLASK_ENV', 'production') == 'development'
     
     # 股票指数配置
