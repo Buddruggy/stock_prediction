@@ -1,7 +1,7 @@
 # 智投预测 - AI股市指数预测平台
 
 <div align="center">
-  <img src="logo.svg" alt="智投预测Logo" width="200">
+  <img src="src/frontend/static/images/logo.svg" alt="智投预测Logo" width="200">
   
   **基于人工智能的中国股票指数预测平台**
   
@@ -47,7 +47,7 @@ git clone <项目地址>
 cd stock_prediction
 
 # 2. 一键启动 (推荐)
-./docker-run.sh
+./scripts/docker-run.sh
 
 # 3. 访问网站
 # http://localhost:9000

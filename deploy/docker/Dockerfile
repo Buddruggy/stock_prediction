@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 9000
 
 # 启动命令
-CMD ["python", "app.py"]
+CMD ["python", "src/backend/app.py"]

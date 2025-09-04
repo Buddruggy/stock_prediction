@@ -6,6 +6,13 @@
 """
 
 from flask import Flask, jsonify, request, send_from_directory
+import sys
+import os
+
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+
+from config import get_config
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
@@ -24,7 +31,14 @@ except ImportError:
     ML_AVAILABLE = False
     print("警告: 机器学习库未安装，将使用简单预测模型")
 
-app = Flask(__name__)
+# 设置静态文件和模板路径
+static_folder_path = os.path.join(os.path.dirname(__file__), '../frontend/static')
+template_folder_path = os.path.join(os.path.dirname(__file__), '../frontend/templates')
+
+app = Flask(__name__, 
+           static_folder=static_folder_path,
+           static_url_path='/static',
+           template_folder=template_folder_path)
 CORS(app)
 
 # 中国股票指数代码映射
@@ -277,12 +291,8 @@ predictor = StockPredictor()
 @app.route('/')
 def index():
     """提供前端页面"""
-    return send_from_directory('.', 'index.html')
-
-@app.route('/<path:filename>')
-def static_files(filename):
-    """提供静态文件"""
-    return send_from_directory('.', filename)
+    from flask import render_template
+    return render_template('index.html')
 
 @app.route('/api/indices')
 def get_indices():

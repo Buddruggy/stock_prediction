@@ -14,7 +14,7 @@ HOST_PORT := 9000
 CONTAINER_PORT := 9000
 
 # Docker配置
-DOCKERFILE := Dockerfile
+DOCKERFILE := deploy/docker/Dockerfile
 DOCKER_CONTEXT := .
 
 # 颜色输出
