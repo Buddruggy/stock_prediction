@@ -1,0 +1,58 @@
+# 智投预测 V2.0 - 生产环境前端 Docker镜像
+# 使用Let's Encrypt证书的HTTPS配置
+
+# 构建阶段
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制package文件
+COPY frontend/package*.json ./
+
+# 安装依赖 - 使用国内镜像源加速
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install
+
+# 复制前端源代码
+COPY frontend/ .
+
+# 构建生产版本
+RUN npm run build
+
+# 运行阶段
+FROM nginx:alpine
+
+# 安装curl用于健康检查
+RUN apk add --no-cache curl
+
+# 复制生产环境nginx配置
+COPY deployment/frontend/nginx-production.conf /etc/nginx/nginx.conf
+
+# 复制构建好的文件到nginx目录
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 创建SSL证书目录
+RUN mkdir -p /etc/nginx/ssl
+
+# 创建非root用户
+RUN addgroup -g 1001 -S app && \
+    adduser -S app -u 1001 -G app && \
+    chown -R app:app /usr/share/nginx/html && \
+    chown -R app:app /var/cache/nginx && \
+    chown -R app:app /var/log/nginx && \
+    chown -R app:app /etc/nginx/conf.d && \
+    chown -R app:app /etc/nginx/ssl && \
+    touch /var/run/nginx.pid && \
+    chown -R app:app /var/run/nginx.pid
+
+USER app
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f https://localhost/health || exit 1
+
+# 暴露端口
+EXPOSE 80 443
+
+# 启动nginx
+CMD ["nginx", "-g", "daemon off;"]
