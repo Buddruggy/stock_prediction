@@ -21,6 +21,7 @@ LEGACY_PORT := 9001
 # Docker配置
 BACKEND_DOCKERFILE := deployment/backend/Dockerfile
 FRONTEND_DOCKERFILE := deployment/frontend/Dockerfile
+FRONTEND_HTTPS_DOCKERFILE := deployment/frontend/Dockerfile.https
 LEGACY_DOCKERFILE := deploy/docker/Dockerfile
 DOCKER_CONTEXT := .
 
@@ -31,7 +32,7 @@ RED := \033[31m
 BLUE := \033[34m
 RESET := \033[0m
 
-.PHONY: help build push pull run stop clean logs shell test dev prod deploy backend frontend legacy install-deps
+.PHONY: help build push pull run stop clean logs shell test dev prod deploy backend frontend legacy install-deps build-frontend-https up-https quick-https ssl-cert
 
 # 默认目标
 .DEFAULT_GOAL := help
@@ -273,6 +274,65 @@ clean-all: stop
 	-docker rmi $(IMAGE_NAME):latest 2>/dev/null || true
 	docker system prune -af
 	@echo "$(GREEN)✅ 深度清理完成$(RESET)"
+
+## 生成SSL证书
+ssl-cert:
+	@echo "$(GREEN)🔐 生成SSL证书...$(RESET)"
+	@echo "$(YELLOW)请输入您的域名 (默认: localhost):$(RESET)"
+	@read -p "域名: " domain; \
+	if [ -z "$$domain" ]; then domain="localhost"; fi; \
+	./scripts/generate-ssl-cert.sh "$$domain"
+	@echo "$(GREEN)✅ SSL证书生成完成$(RESET)"
+	@echo "$(BLUE)📁 证书位置: ssl/cert.pem, ssl/key.pem$(RESET)"
+
+## 构建HTTPS前端镜像
+build-frontend-https:
+	@echo "$(GREEN)🔨 构建HTTPS前端Docker镜像...$(RESET)"
+	docker build -t $(FRONTEND_IMAGE):$(VERSION)-https -t $(FRONTEND_IMAGE):latest-https -f $(FRONTEND_HTTPS_DOCKERFILE) $(DOCKER_CONTEXT)
+	@echo "$(GREEN)✅ HTTPS前端镜像构建完成: $(FRONTEND_IMAGE):$(VERSION)-https$(RESET)"
+
+## 部署HTTPS服务
+up-https: build-backend build-frontend-https
+	@echo "$(GREEN)🚀 一键部署HTTPS前后端服务...$(RESET)"
+	@echo "$(YELLOW)正在构建前后端镜像...$(RESET)"
+	@echo "$(YELLOW)正在创建网络...$(RESET)"
+	docker network create zhitou-network 2>/dev/null || true
+	@echo "$(YELLOW)正在启动后端服务...$(RESET)"
+	docker run -d \
+		--name $(BACKEND_CONTAINER) \
+		--network zhitou-network \
+		-p $(BACKEND_PORT):$(BACKEND_PORT) \
+		-e ENVIRONMENT=production \
+		--restart unless-stopped \
+		$(BACKEND_IMAGE):latest
+	@echo "$(YELLOW)正在启动HTTPS前端服务...$(RESET)"
+	docker run -d \
+		--name $(FRONTEND_CONTAINER)-https \
+		--network zhitou-network \
+		-p 80:80 \
+		-p 443:443 \
+		-v "$(PWD)/ssl:/etc/nginx/ssl:ro" \
+		--restart unless-stopped \
+		$(FRONTEND_IMAGE):latest-https
+	@echo "$(GREEN)✅ HTTPS前后端服务部署完成$(RESET)"
+	@echo "$(BLUE)🌐 HTTPS访问: https://localhost:443$(RESET)"
+	@echo "$(BLUE)🌐 HTTP重定向: http://localhost:80 -> https://localhost:443$(RESET)"
+	@echo "$(BLUE)🌐 后端API: http://localhost:$(BACKEND_PORT)$(RESET)"
+	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
+	@echo "$(YELLOW)💡 使用 'make stop' 停止服务$(RESET)"
+
+## 快速HTTPS启动
+quick-https: 
+	@echo "$(GREEN)🚀 快速HTTPS启动...$(RESET)"
+	@echo "$(YELLOW)选择启动模式:$(RESET)"
+	@echo "1) HTTPS模式 (推荐)"
+	@echo "2) HTTP模式"
+	@read -p "请选择 (1-2): " choice; \
+	case $$choice in \
+		1) make up-https ;; \
+		2) make up ;; \
+		*) echo "$(RED)无效选择$(RESET)" ;; \
+	esac
 
 ## 健康检查
 health:
