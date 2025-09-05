@@ -172,18 +172,17 @@ onMounted(() => {
   }
 }
 
-// 卡片样式
+// 卡片样式 - 参考Claude官网风格
 .card {
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e9ecef;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e5e7eb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border-color: #d1d5db;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
   @media (max-width: 768px) {
@@ -192,7 +191,7 @@ onMounted(() => {
   
   @media (max-width: 480px) {
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 6px;
   }
 }
 
@@ -202,13 +201,14 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid #f3f4f6;
   
   .index-name {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #2c3e50;
+    color: #1a1a1a;
     margin: 0;
+    letter-spacing: -0.025em;
     
     @media (max-width: 480px) {
       font-size: 1rem;
@@ -217,11 +217,12 @@ onMounted(() => {
   
   .index-code {
     font-size: 0.75rem;
-    color: #6c757d;
-    background: #f8f9fa;
+    color: #6b7280;
+    background: #f9fafb;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-weight: 500;
+    border: 1px solid #e5e7eb;
     
     @media (max-width: 480px) {
       font-size: 0.7rem;
@@ -247,7 +248,7 @@ onMounted(() => {
   
   .label {
     font-size: 0.875rem;
-    color: #6c757d;
+    color: #6b7280;
     font-weight: 500;
     
     @media (max-width: 480px) {
@@ -258,24 +259,24 @@ onMounted(() => {
   .value {
     font-size: 1rem;
     font-weight: 600;
-    color: #2c3e50;
+    color: #1a1a1a;
     
     &.predicted {
-      color: #007bff;
+      color: #2563eb;
     }
     
     &.change {
       &.positive {
-        color: #28a745;
+        color: #059669;
       }
       
       &.negative {
-        color: #dc3545;
+        color: #dc2626;
       }
     }
     
     &.confidence {
-      color: #fd7e14;
+      color: #d97706;
     }
     
     @media (max-width: 480px) {

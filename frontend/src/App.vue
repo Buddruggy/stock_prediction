@@ -43,10 +43,12 @@ export default {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  line-height: 1.6;
-  color: #333;
-  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background-color: #FBF9F6;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 #app {
@@ -66,10 +68,10 @@ body {
   }
 }
 
-// 头部
+// 头部 - 参考Claude官网风格
 .header {
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #FBF9F6;
+  border-bottom: 1px solid #e5e7eb;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -78,7 +80,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 60px;
+    height: 64px;
     
     @media (max-width: 768px) {
       height: 56px;
@@ -87,8 +89,9 @@ body {
   
   .title {
     font-size: 1.5rem;
-    font-weight: 700;
-    color: #2c3e50;
+    font-weight: 600;
+    color: #1a1a1a;
+    letter-spacing: -0.025em;
     
     @media (max-width: 768px) {
       font-size: 1.25rem;
@@ -100,30 +103,29 @@ body {
     gap: 2rem;
     
     @media (max-width: 768px) {
-      gap: 1rem;
+      gap: 1.5rem;
     }
   }
   
   .nav-item {
     text-decoration: none;
-    color: #666;
+    color: #6b7280;
     font-weight: 500;
+    font-size: 0.95rem;
     padding: 0.5rem 0;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
+    transition: color 0.2s ease;
     
     &:hover {
-      color: #007bff;
+      color: #2563eb;
     }
     
     &.router-link-active {
-      color: #007bff;
-      border-bottom-color: #007bff;
+      color: #2563eb;
+      font-weight: 600;
     }
     
     @media (max-width: 768px) {
       font-size: 0.9rem;
-      padding: 0.25rem 0;
     }
   }
 }
@@ -138,17 +140,18 @@ body {
   }
 }
 
-// 页脚
+// 页脚 - 参考Claude官网风格
 .footer {
-  background: white;
-  border-top: 1px solid #e9ecef;
-  padding: 1rem 0;
+  background: #FBF9F6;
+  border-top: 1px solid #e5e7eb;
+  padding: 1.5rem 0;
   text-align: center;
-  color: #6c757d;
+  color: #6b7280;
   font-size: 0.875rem;
+  font-weight: 400;
   
   @media (max-width: 768px) {
-    padding: 0.75rem 0;
+    padding: 1rem 0;
     font-size: 0.8rem;
   }
 }
