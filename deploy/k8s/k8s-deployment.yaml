@@ -1,65 +1,122 @@
-# 智投预测 - Kubernetes部署配置
+# 智投预测 - Kubernetes部署配置 (Go后端)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zhitou-prediction
+  name: zhitou-prediction-backend
   labels:
-    app: zhitou-prediction
+    app: zhitou-prediction-backend
     version: v1.0
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: zhitou-prediction
+      app: zhitou-prediction-backend
   template:
     metadata:
       labels:
-        app: zhitou-prediction
+        app: zhitou-prediction-backend
     spec:
       containers:
-      - name: zhitou-prediction
-        image: zhitou-prediction:latest
+      - name: zhitou-prediction-backend
+        image: alanwzliang/zhitou-prediction-backend:latest
         ports:
-        - containerPort: 9000
+        - containerPort: 8000
         env:
-        - name: FLASK_ENV
+        - name: ENVIRONMENT
           value: "production"
-        - name: PYTHONUNBUFFERED
-          value: "1"
+        - name: PORT
+          value: "8000"
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "200m"
         livenessProbe:
           httpGet:
-            path: /api/status
-            port: 9000
+            path: /health
+            port: 8000
           initialDelaySeconds: 30
           periodSeconds: 30
         readinessProbe:
           httpGet:
-            path: /api/status
-            port: 9000
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zhitou-prediction-frontend
+  labels:
+    app: zhitou-prediction-frontend
+    version: v1.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: zhitou-prediction-frontend
+  template:
+    metadata:
+      labels:
+        app: zhitou-prediction-frontend
+    spec:
+      containers:
+      - name: zhitou-prediction-frontend
+        image: alanwzliang/zhitou-prediction-frontend:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
           initialDelaySeconds: 5
           periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: zhitou-prediction-service
+  name: zhitou-prediction-backend-service
   labels:
-    app: zhitou-prediction
+    app: zhitou-prediction-backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: zhitou-prediction-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zhitou-prediction-frontend-service
+  labels:
+    app: zhitou-prediction-frontend
 spec:
   type: LoadBalancer
   ports:
   - port: 80
-    targetPort: 9000
+    targetPort: 80
     protocol: TCP
   selector:
-    app: zhitou-prediction
+    app: zhitou-prediction-frontend
 ---
 # 可选: Ingress配置 (需要Ingress Controller)
 apiVersion: networking.k8s.io/v1
@@ -68,15 +125,27 @@ metadata:
   name: zhitou-prediction-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   rules:
   - host: zhitou.example.com  # 替换为您的域名
     http:
       paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: zhitou-prediction-backend-service
+            port:
+              number: 8000
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: zhitou-prediction-service
+            name: zhitou-prediction-frontend-service
             port:
               number: 80
+  tls:
+  - hosts:
+    - zhitou.example.com
+    secretName: zhitou-prediction-tls

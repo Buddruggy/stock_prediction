@@ -52,13 +52,13 @@ help:
 	@echo ""
 	@echo "$(YELLOW)开发相关:$(RESET)"
 	@echo "  install-deps - 安装前后端依赖"
-	@echo "  backend   - 启动后端开发服务器"
+	@echo "  backend   - 启动Go后端开发服务器"
 	@echo "  frontend  - 启动前端开发服务器"
 	@echo "  dev       - 同时启动前后端开发服务器"
 	@echo ""
 	@echo "$(YELLOW)构建相关:$(RESET)"
 	@echo "  build     - 构建前后端Docker镜像"
-	@echo "  build-backend - 构建后端镜像"
+	@echo "  build-backend - 构建Go后端镜像"
 	@echo "  build-frontend - 构建前端镜像"
 	@echo "  legacy    - 构建并运行单体应用(兼容)"
 	@echo "  push      - 推送镜像到仓库"
@@ -96,18 +96,18 @@ help:
 ## 安装前后端依赖
 install-deps:
 	@echo "$(GREEN)📦 安装前后端依赖...$(RESET)"
-	@echo "$(YELLOW)安装后端依赖...$(RESET)"
-	cd backend && pip install -r requirements.txt
+	@echo "$(YELLOW)安装Go后端依赖...$(RESET)"
+	cd backend-go && go mod tidy
 	@echo "$(YELLOW)安装前端依赖...$(RESET)"
 	cd frontend && npm install
 	@echo "$(GREEN)✅ 依赖安装完成$(RESET)"
 
-## 启动后端开发服务器
+## 启动Go后端开发服务器
 backend:
-	@echo "$(GREEN)🚀 启动后端开发服务器...$(RESET)"
+	@echo "$(GREEN)🚀 启动Go后端开发服务器...$(RESET)"
 	@echo "$(BLUE)🌐 后端地址: http://localhost:$(BACKEND_PORT)$(RESET)"
-	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port $(BACKEND_PORT)
+	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/api/v1$(RESET)"
+	cd backend-go && go run cmd/main.go
 
 ## 启动前端开发服务器
 frontend:
@@ -120,11 +120,10 @@ dev:
 	@echo "$(GREEN)🚀 启动前后端开发环境...$(RESET)"
 	@echo "$(BLUE)🌐 前端: http://localhost:$(FRONTEND_PORT)$(RESET)"
 	@echo "$(BLUE)🌐 后端: http://localhost:$(BACKEND_PORT)$(RESET)"
-	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
+	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/api/v1$(RESET)"
 	@echo "$(YELLOW)请在两个终端分别运行:$(RESET)"
 	@echo "  终端1: make backend"
 	@echo "  终端2: make frontend"
-
 
 ## 一键部署前后端服务
 up: stop
@@ -133,7 +132,7 @@ up: stop
 	@$(MAKE) build-backend build-frontend
 	@echo "$(YELLOW)正在创建网络...$(RESET)"
 	-docker network create zhitou-network 2>/dev/null || true
-	@echo "$(YELLOW)正在启动后端服务...$(RESET)"
+	@echo "$(YELLOW)正在启动Go后端服务...$(RESET)"
 	docker run -d \
 		--name $(BACKEND_CONTAINER) \
 		--network zhitou-network \
@@ -152,7 +151,7 @@ up: stop
 	@echo "$(GREEN)✅ 前后端服务部署完成$(RESET)"
 	@echo "$(BLUE)🌐 前端访问: http://localhost:80 或 http://localhost:$(FRONTEND_PORT)$(RESET)"
 	@echo "$(BLUE)🌐 后端API: http://localhost:$(BACKEND_PORT)$(RESET)"
-	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
+	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/api/v1$(RESET)"
 	@echo "$(YELLOW)💡 使用 'make stop' 停止服务$(RESET)"
 
 ## 快速一键启动 (推荐)
@@ -168,11 +167,11 @@ quick:
 		$(MAKE) up; \
 	fi
 
-## 构建后端Docker镜像
+## 构建Go后端Docker镜像
 build-backend:
-	@echo "$(GREEN)🔨 构建后端Docker镜像...$(RESET)"
+	@echo "$(GREEN)🔨 构建Go后端Docker镜像...$(RESET)"
 	docker build -t $(BACKEND_IMAGE):$(VERSION) -t $(BACKEND_IMAGE):latest -f $(BACKEND_DOCKERFILE) $(DOCKER_CONTEXT)
-	@echo "$(GREEN)✅ 后端镜像构建完成: $(BACKEND_IMAGE):$(VERSION)$(RESET)"
+	@echo "$(GREEN)✅ Go后端镜像构建完成: $(BACKEND_IMAGE):$(VERSION)$(RESET)"
 
 ## 构建前端Docker镜像
 build-frontend:
@@ -194,44 +193,24 @@ legacy:
 	@echo "$(GREEN)✅ 单体应用启动完成$(RESET)"
 	@echo "$(BLUE)🌐 访问地址: http://localhost:$(LEGACY_PORT)$(RESET)"
 
-
-## 无缓存构建Docker镜像
-build-nc:
-	@echo "$(GREEN)🔨 无缓存构建Docker镜像...$(RESET)"
-	docker build --no-cache -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest -f $(DOCKERFILE) $(DOCKER_CONTEXT)
-	@echo "$(GREEN)✅ 镜像构建完成: $(IMAGE_NAME):$(VERSION)$(RESET)"
-
 ## 推送镜像到仓库
 push: build
 	@echo "$(GREEN)📤 推送镜像到仓库...$(RESET)"
-	docker push $(IMAGE_NAME):$(VERSION)
-	docker push $(IMAGE_NAME):latest
+	docker push $(BACKEND_IMAGE):$(VERSION)
+	docker push $(BACKEND_IMAGE):latest
+	docker push $(FRONTEND_IMAGE):$(VERSION)
+	docker push $(FRONTEND_IMAGE):latest
 	@echo "$(GREEN)✅ 镜像推送完成$(RESET)"
 
 ## 从仓库拉取镜像
 pull:
 	@echo "$(GREEN)📥 从仓库拉取镜像...$(RESET)"
-	docker pull $(IMAGE_NAME):latest
+	docker pull $(BACKEND_IMAGE):latest
+	docker pull $(FRONTEND_IMAGE):latest
 	@echo "$(GREEN)✅ 镜像拉取完成$(RESET)"
 
-## 运行容器
-# run目标已废弃，请使用 make up 或 make legacy
-
-## 运行开发环境 (Docker容器方式)
-dev-docker: stop
-	@echo "$(GREEN)🛠 启动开发环境...$(RESET)"
-	docker run -d \
-		--name $(PROJECT_NAME)-dev \
-		-p $(LEGACY_PORT):$(LEGACY_PORT) \
-		-e FLASK_ENV=development \
-		-v $(PWD):/app \
-		--restart unless-stopped \
-		$(REGISTRY)/$(USERNAME)/$(PROJECT_NAME):latest
-	@echo "$(GREEN)✅ 开发环境启动完成$(RESET)"
-	@echo "$(BLUE)🌐 访问地址: http://localhost:$(LEGACY_PORT)$(RESET)"
-
 ## 运行生产环境
-prod: build run
+prod: build up
 	@echo "$(GREEN)🏭 生产环境部署完成$(RESET)"
 
 ## 停止所有容器
@@ -244,17 +223,30 @@ stop:
 	@echo "$(GREEN)✅ 容器已停止$(RESET)"
 
 ## 重启容器
-restart: stop run
+restart: stop up
 
 ## 查看容器日志
 logs:
 	@echo "$(BLUE)📋 查看容器日志...$(RESET)"
-	docker logs -f $(CONTAINER_NAME) 2>/dev/null || docker logs -f $(CONTAINER_NAME)-dev
+	@echo "$(YELLOW)后端日志:$(RESET)"
+	docker logs -f $(BACKEND_CONTAINER) 2>/dev/null || echo "$(RED)后端容器未运行$(RESET)"
+	@echo "$(YELLOW)前端日志:$(RESET)"
+	docker logs -f $(FRONTEND_CONTAINER) 2>/dev/null || echo "$(RED)前端容器未运行$(RESET)"
 
 ## 进入容器shell
 shell:
 	@echo "$(BLUE)🐚 进入容器shell...$(RESET)"
-	docker exec -it $(CONTAINER_NAME) /bin/bash 2>/dev/null || docker exec -it $(CONTAINER_NAME)-dev /bin/bash
+	@echo "$(YELLOW)选择容器:$(RESET)"
+	@echo "  1. Go后端容器"
+	@echo "  2. 前端容器"
+	@read -p "请选择 [1/2]: " choice; \
+	if [ "$$choice" = "1" ]; then \
+		docker exec -it $(BACKEND_CONTAINER) /bin/sh; \
+	elif [ "$$choice" = "2" ]; then \
+		docker exec -it $(FRONTEND_CONTAINER) /bin/sh; \
+	else \
+		echo "$(RED)无效选择$(RESET)"; \
+	fi
 
 ## 查看容器状态
 ps:
@@ -271,8 +263,10 @@ clean:
 ## 深度清理
 clean-all: stop
 	@echo "$(RED)🗑 深度清理Docker资源...$(RESET)"
-	-docker rmi $(IMAGE_NAME):$(VERSION) 2>/dev/null || true
-	-docker rmi $(IMAGE_NAME):latest 2>/dev/null || true
+	-docker rmi $(BACKEND_IMAGE):$(VERSION) 2>/dev/null || true
+	-docker rmi $(BACKEND_IMAGE):latest 2>/dev/null || true
+	-docker rmi $(FRONTEND_IMAGE):$(VERSION) 2>/dev/null || true
+	-docker rmi $(FRONTEND_IMAGE):latest 2>/dev/null || true
 	docker system prune -af
 	@echo "$(GREEN)✅ 深度清理完成$(RESET)"
 
@@ -298,7 +292,7 @@ up-https: build-backend build-frontend-https
 	@echo "$(YELLOW)正在构建前后端镜像...$(RESET)"
 	@echo "$(YELLOW)正在创建网络...$(RESET)"
 	docker network create zhitou-network 2>/dev/null || true
-	@echo "$(YELLOW)正在启动后端服务...$(RESET)"
+	@echo "$(YELLOW)正在启动Go后端服务...$(RESET)"
 	docker run -d \
 		--name $(BACKEND_CONTAINER) \
 		--network zhitou-network \
@@ -319,7 +313,7 @@ up-https: build-backend build-frontend-https
 	@echo "$(BLUE)🌐 HTTPS访问: https://localhost:443$(RESET)"
 	@echo "$(BLUE)🌐 HTTP重定向: http://localhost:80 -> https://localhost:443$(RESET)"
 	@echo "$(BLUE)🌐 后端API: http://localhost:$(BACKEND_PORT)$(RESET)"
-	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
+	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/api/v1$(RESET)"
 	@echo "$(YELLOW)💡 使用 'make stop' 停止服务$(RESET)"
 
 ## 快速HTTPS启动
@@ -358,7 +352,7 @@ up-prod: build-backend build-prod
 	@echo "$(GREEN)🚀 部署生产环境HTTPS服务...$(RESET)"
 	@echo "$(YELLOW)正在创建网络...$(RESET)"
 	docker network create zhitou-network 2>/dev/null || true
-	@echo "$(YELLOW)正在启动后端服务...$(RESET)"
+	@echo "$(YELLOW)正在启动Go后端服务...$(RESET)"
 	docker run -d \
 		--name $(BACKEND_CONTAINER) \
 		--network zhitou-network \
@@ -385,17 +379,17 @@ up-prod: build-backend build-prod
 ## 健康检查
 health:
 	@echo "$(BLUE)🔍 健康检查...$(RESET)"
-	@curl -f http://localhost:$(HOST_PORT)/api/status 2>/dev/null && \
-		echo "$(GREEN)✅ 服务正常运行$(RESET)" || \
-		echo "$(RED)❌ 服务未响应$(RESET)"
+	@curl -f http://localhost:$(BACKEND_PORT)/health 2>/dev/null && \
+		echo "$(GREEN)✅ Go后端服务正常运行$(RESET)" || \
+		echo "$(RED)❌ Go后端服务未响应$(RESET)"
+	@curl -f http://localhost:80 2>/dev/null && \
+		echo "$(GREEN)✅ 前端服务正常运行$(RESET)" || \
+		echo "$(RED)❌ 前端服务未响应$(RESET)"
 
 ## 运行测试
-test: build
-	@echo "$(BLUE)🧪 运行测试...$(RESET)"
-	docker run --rm \
-		-e FLASK_ENV=testing \
-		$(IMAGE_NAME):latest \
-		python -m pytest tests/ || echo "$(YELLOW)⚠️ 测试目录不存在$(RESET)"
+test: build-backend
+	@echo "$(BLUE)🧪 运行Go后端测试...$(RESET)"
+	cd backend-go && go test ./... || echo "$(YELLOW)⚠️ 测试失败$(RESET)"
 
 ## 使用docker-compose部署
 deploy:
@@ -404,18 +398,18 @@ deploy:
 	docker-compose build
 	docker-compose up -d
 	@echo "$(GREEN)✅ 部署完成$(RESET)"
-	@echo "$(BLUE)🌐 访问地址: http://localhost:$(HOST_PORT)$(RESET)"
+	@echo "$(BLUE)🌐 访问地址: http://localhost:$(BACKEND_PORT)$(RESET)"
 
 ## 部署到Kubernetes
 k8s:
 	@echo "$(GREEN)☸️ 部署到Kubernetes...$(RESET)"
-	kubectl apply -f k8s-deployment.yaml
+	kubectl apply -f deploy/k8s/k8s-deployment.yaml
 	@echo "$(GREEN)✅ K8s部署完成$(RESET)"
 
 ## 从Kubernetes删除
 k8s-delete:
 	@echo "$(YELLOW)🗑 从Kubernetes删除...$(RESET)"
-	kubectl delete -f k8s-deployment.yaml
+	kubectl delete -f deploy/k8s/k8s-deployment.yaml
 	@echo "$(GREEN)✅ K8s删除完成$(RESET)"
 
 ## 显示版本信息
@@ -423,7 +417,8 @@ version:
 	@echo "$(BLUE)版本信息:$(RESET)"
 	@echo "  项目名称: $(PROJECT_NAME)"
 	@echo "  当前版本: $(VERSION)"
-	@echo "  镜像名称: $(IMAGE_NAME):$(VERSION)"
+	@echo "  后端镜像: $(BACKEND_IMAGE):$(VERSION)"
+	@echo "  前端镜像: $(FRONTEND_IMAGE):$(VERSION)"
 	@echo "  Git提交:  $(shell git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
 	@echo "  构建时间: $(shell date)"
 
@@ -433,49 +428,63 @@ build-multi:
 	docker buildx create --use --name multiarch-builder 2>/dev/null || true
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
-		-t $(IMAGE_NAME):$(VERSION) \
-		-t $(IMAGE_NAME):latest \
+		-t $(BACKEND_IMAGE):$(VERSION) \
+		-t $(BACKEND_IMAGE):latest \
 		--push \
-		-f $(DOCKERFILE) $(DOCKER_CONTEXT)
+		-f $(BACKEND_DOCKERFILE) $(DOCKER_CONTEXT)
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t $(FRONTEND_IMAGE):$(VERSION) \
+		-t $(FRONTEND_IMAGE):latest \
+		--push \
+		-f $(FRONTEND_DOCKERFILE) $(DOCKER_CONTEXT)
 	@echo "$(GREEN)✅ 多架构镜像构建完成$(RESET)"
 
 ## 生成发布包
 release: build
 	@echo "$(GREEN)📦 生成发布包...$(RESET)"
 	mkdir -p release
-	docker save $(IMAGE_NAME):$(VERSION) | gzip > release/$(PROJECT_NAME)-$(VERSION).tar.gz
-	cp docker-compose.yml release/
-	cp k8s-deployment.yaml release/
+	docker save $(BACKEND_IMAGE):$(VERSION) | gzip > release/$(PROJECT_NAME)-backend-$(VERSION).tar.gz
+	docker save $(FRONTEND_IMAGE):$(VERSION) | gzip > release/$(PROJECT_NAME)-frontend-$(VERSION).tar.gz
+	cp docker-compose.yml release/ 2>/dev/null || true
+	cp deploy/k8s/k8s-deployment.yaml release/ 2>/dev/null || true
 	cp README.md release/
-	@echo "$(GREEN)✅ 发布包生成完成: release/$(PROJECT_NAME)-$(VERSION).tar.gz$(RESET)"
+	@echo "$(GREEN)✅ 发布包生成完成: release/$(PROJECT_NAME)-*-$(VERSION).tar.gz$(RESET)"
 
 ## 加载发布包
 load-release:
 	@echo "$(GREEN)📥 加载发布包...$(RESET)"
-	@if [ -f "release/$(PROJECT_NAME)-$(VERSION).tar.gz" ]; then \
-		docker load < release/$(PROJECT_NAME)-$(VERSION).tar.gz; \
-		echo "$(GREEN)✅ 发布包加载完成$(RESET)"; \
+	@if [ -f "release/$(PROJECT_NAME)-backend-$(VERSION).tar.gz" ]; then \
+		docker load < release/$(PROJECT_NAME)-backend-$(VERSION).tar.gz; \
+		echo "$(GREEN)✅ 后端发布包加载完成$(RESET)"; \
 	else \
-		echo "$(RED)❌ 发布包不存在$(RESET)"; \
+		echo "$(RED)❌ 后端发布包不存在$(RESET)"; \
 	fi
-
-# 旧的quick目标已废弃，请使用第一个quick目标
+	@if [ -f "release/$(PROJECT_NAME)-frontend-$(VERSION).tar.gz" ]; then \
+		docker load < release/$(PROJECT_NAME)-frontend-$(VERSION).tar.gz; \
+		echo "$(GREEN)✅ 前端发布包加载完成$(RESET)"; \
+	else \
+		echo "$(RED)❌ 前端发布包不存在$(RESET)"; \
+	fi
 
 ## 显示资源使用情况
 stats:
 	@echo "$(BLUE)📈 资源使用情况:$(RESET)"
-	docker stats zhitou-prediction-backend zhitou-prediction-frontend --no-stream 2>/dev/null || \
-	docker stats zhitou-prediction --no-stream 2>/dev/null || \
+	docker stats $(BACKEND_CONTAINER) $(FRONTEND_CONTAINER) --no-stream 2>/dev/null || \
+	docker stats $(PROJECT_NAME) --no-stream 2>/dev/null || \
 	echo "$(YELLOW)⚠️ 容器未运行$(RESET)"
 
 ## 备份数据
 backup:
 	@echo "$(GREEN)💾 备份数据...$(RESET)"
 	mkdir -p backups
-	docker exec zhitou-prediction-backend tar czf - /app/data 2>/dev/null > backups/backend-backup-$(shell date +%Y%m%d-%H%M%S).tar.gz || \
+	docker exec $(BACKEND_CONTAINER) tar czf - /app/data 2>/dev/null > backups/backend-backup-$(shell date +%Y%m%d-%H%M%S).tar.gz || \
 	echo "$(YELLOW)⚠️ 无数据需要备份$(RESET)"
 
 ## 显示镜像信息
 info:
 	@echo "$(BLUE)🔍 镜像信息:$(RESET)"
-	docker images $(IMAGE_NAME) --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedAt}}"
+	@echo "$(YELLOW)后端镜像:$(RESET)"
+	docker images $(BACKEND_IMAGE) --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedAt}}"
+	@echo "$(YELLOW)前端镜像:$(RESET)"
+	docker images $(FRONTEND_IMAGE) --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedAt}}"

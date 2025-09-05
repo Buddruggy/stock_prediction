@@ -1,51 +1,42 @@
-# 智投预测 V2.0 - 后端API Docker镜像
-FROM python:3.11-slim
+# 构建阶段
+FROM golang:1.21-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
-# 设置环境变量
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+# 安装必要的包
+RUN apk add --no-cache git
 
-# 使用国内镜像源加速包安装
-RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+# 复制 go mod 文件
+COPY backend-go/go.mod backend-go/go.sum ./
 
-# 安装系统依赖
-RUN apt-get update --fix-missing && \
-    apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+# 下载依赖
+RUN go mod download
 
-# 复制后端依赖文件
-COPY backend/requirements.txt .
+# 复制源代码
+COPY backend-go/ .
 
-# 安装Python依赖
-RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple/ && \
-    pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+# 构建应用
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
 
-# 复制后端代码
-COPY backend/ ./backend/
-# COPY shared/ ./shared/  # 暂时注释掉，shared目录还未创建
+# 运行阶段
+FROM alpine:latest
 
-# 创建非root用户
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
-USER app
+# 安装 ca-certificates 和 curl
+RUN apk --no-cache add ca-certificates curl
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# 设置工作目录
+WORKDIR /root/
+
+# 从构建阶段复制二进制文件
+COPY --from=builder /app/main .
 
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令
-WORKDIR /app/backend
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# 运行应用
+CMD ["./main"]
