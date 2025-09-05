@@ -1,81 +1,137 @@
 <template>
   <div class="home">
-    <div class="hero-section">
-      <h2>AI股市指数预测</h2>
-      <p>基于机器学习技术，为您提供专业的股票指数预测服务</p>
-    </div>
-
-    <div class="predictions-grid">
+    <!-- 预测卡片 -->
+    <div class="cards-grid">
       <div 
-        v-for="(prediction, code) in predictions" 
+        v-for="(prediction, code) in displayData" 
         :key="code"
-        class="prediction-card"
-        :class="`prediction-${code}`"
+        class="card"
       >
         <div class="card-header">
-          <h3>{{ prediction.name }}</h3>
-          <span class="market">{{ prediction.market }}</span>
+          <h3 class="index-name">{{ prediction.name }}</h3>
+          <span class="index-code">{{ code.toUpperCase() }}</span>
         </div>
         
-        <div class="card-body">
-          <div class="current-price">
-            <label>当前价格</label>
-            <span class="price">{{ prediction.current?.toFixed(2) || '--' }}</span>
+        <div class="card-content">
+          <div class="price-item">
+            <span class="label">当前</span>
+            <span class="value">{{ prediction.current?.toFixed(2) || '--' }}</span>
           </div>
           
-          <div class="predicted-price">
-            <label>明日预测</label>
-            <span class="price predicted">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
+          <div class="price-item">
+            <span class="label">预测</span>
+            <span class="value predicted">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
           </div>
           
-          <div class="change" :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }">
-            <label>预测涨跌</label>
-            <span>{{ prediction.change > 0 ? '+' : '' }}{{ prediction.change?.toFixed(2) || '--' }} ({{ prediction.changePercent?.toFixed(2) || '--' }}%)</span>
+          <div class="price-item">
+            <span class="label">涨跌</span>
+            <span 
+              class="value change" 
+              :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
+            >
+              {{ formatChange(prediction.change, prediction.changePercent) }}
+            </span>
           </div>
           
-          <div class="confidence">
-            <label>AI信心指数</label>
-            <span>{{ prediction.confidence?.toFixed(1) || '--' }}%</span>
+          <div class="price-item">
+            <span class="label">信心度</span>
+            <span class="value confidence">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="loading" v-if="loading">
-      <el-icon class="is-loading"><Loading /></el-icon>
-      <span>正在获取预测数据...</span>
+    <!-- 加载状态 -->
+    <div v-if="loading" class="status loading">
+      <div class="spinner"></div>
+      <span>正在获取数据...</span>
     </div>
 
-    <div class="error" v-if="error">
-      <el-icon><Warning /></el-icon>
-      <span>{{ error }}</span>
+    <!-- 使用mock数据提示 -->
+    <div v-if="usingMockData" class="status info">
+      <span>📊 当前显示模拟数据，实际数据加载中...</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Loading, Warning } from '@element-plus/icons-vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+
+// Mock数据
+const mockData = {
+  sh000001: {
+    name: '上证指数',
+    market: 'Shanghai',
+    current: 3142.56,
+    predicted: 3168.23,
+    change: 25.67,
+    changePercent: 0.82,
+    confidence: 78.5
+  },
+  sz399001: {
+    name: '深证成指',
+    market: 'Shenzhen',
+    current: 10234.78,
+    predicted: 10187.45,
+    change: -47.33,
+    changePercent: -0.46,
+    confidence: 72.3
+  },
+  sz399006: {
+    name: '创业板指',
+    market: 'ChiNext',
+    current: 2156.89,
+    predicted: 2178.12,
+    change: 21.23,
+    changePercent: 0.98,
+    confidence: 65.8
+  },
+  sh000688: {
+    name: '科创50',
+    market: 'STAR50',
+    current: 987.45,
+    predicted: 994.67,
+    change: 7.22,
+    changePercent: 0.73,
+    confidence: 69.2
+  }
+}
 
 const predictions = ref({})
 const loading = ref(false)
-const error = ref('')
+const usingMockData = ref(false)
+
+// 显示的数据：优先使用真实数据，失败时使用mock数据
+const displayData = computed(() => {
+  return Object.keys(predictions.value).length > 0 ? predictions.value : mockData
+})
+
+// 格式化涨跌显示
+const formatChange = (change, changePercent) => {
+  if (change === undefined || changePercent === undefined) return '--'
+  const sign = change > 0 ? '+' : ''
+  return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`
+}
 
 const fetchPredictions = async () => {
   loading.value = true
-  error.value = ''
   
   try {
-    const response = await axios.get('/api/v1/predict/all')
+    const response = await axios.get('/api/v1/predict/all', {
+      timeout: 5000 // 5秒超时
+    })
+    
     if (response.data.code === 200) {
       predictions.value = response.data.data
+      usingMockData.value = false
     } else {
-      error.value = response.data.message || '获取数据失败'
+      console.warn('API返回错误:', response.data.message)
+      usingMockData.value = true
     }
   } catch (err) {
-    error.value = '网络连接失败，请稍后重试'
-    console.error('获取预测数据失败:', err)
+    console.warn('获取预测数据失败，使用模拟数据:', err.message)
+    usingMockData.value = true
   } finally {
     loading.value = false
   }
@@ -83,74 +139,60 @@ const fetchPredictions = async () => {
 
 onMounted(() => {
   fetchPredictions()
-  // 每5分钟刷新一次数据
-  setInterval(fetchPredictions, 5 * 60 * 1000)
+  // 每30秒重试一次获取真实数据
+  setInterval(fetchPredictions, 30 * 1000)
 })
 </script>
 
 <style lang="scss" scoped>
 .home {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+  width: 100%;
 }
 
-.hero-section {
-  text-align: center;
-  margin-bottom: 40px;
-  padding: 40px 20px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
-  
-  h2 {
-    font-size: 2.5rem;
-    color: white;
-    margin-bottom: 16px;
-    font-weight: 700;
-  }
-  
-  p {
-    font-size: 1.2rem;
-    color: rgba(255,255,255,0.8);
-    margin: 0;
-  }
-}
 
-.predictions-grid {
+// 卡片网格
+.cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-width: 400px;
+  }
+  
+  @media (max-width: 480px) {
+    gap: 0.75rem;
+    max-width: 100%;
+  }
 }
 
-.prediction-card {
+// 卡片样式
+.card {
   background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border-left: 4px solid #409eff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
   
-  &.prediction-sh000001 {
-    border-left-color: #e74c3c;
+  @media (max-width: 768px) {
+    padding: 1.25rem;
   }
   
-  &.prediction-sz399001 {
-    border-left-color: #2ecc71;
-  }
-  
-  &.prediction-sz399006 {
-    border-left-color: #f39c12;
-  }
-  
-  &.prediction-sh000688 {
-    border-left-color: #9b59b6;
+  @media (max-width: 480px) {
+    padding: 1rem;
+    border-radius: 8px;
   }
 }
 
@@ -158,94 +200,143 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f8f9fa;
   
-  h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: #2c3e50;
+  .index-name {
+    font-size: 1.125rem;
     font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    
+    @media (max-width: 480px) {
+      font-size: 1rem;
+    }
   }
   
-  .market {
-    font-size: 0.875rem;
-    color: #7f8c8d;
-    background: #ecf0f1;
-    padding: 4px 8px;
+  .index-code {
+    font-size: 0.75rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    font-weight: 500;
+    
+    @media (max-width: 480px) {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.4rem;
+    }
   }
 }
 
-.card-body {
+.card-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 0.75rem;
   
-  > div {
-    display: flex;
-    flex-direction: column;
-    
-    label {
-      font-size: 0.875rem;
-      color: #7f8c8d;
-      margin-bottom: 4px;
-    }
-    
-    span {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-  
-  .predicted span {
-    color: #409eff;
-  }
-  
-  .change {
-    &.positive span {
-      color: #67c23a;
-    }
-    
-    &.negative span {
-      color: #f56c6c;
-    }
-  }
-  
-  .confidence span {
-    color: #e6a23c;
+  @media (max-width: 480px) {
+    gap: 0.5rem;
   }
 }
 
-.loading, .error {
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  
+  .label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+    
+    @media (max-width: 480px) {
+      font-size: 0.8rem;
+    }
+  }
+  
+  .value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    
+    &.predicted {
+      color: #007bff;
+    }
+    
+    &.change {
+      &.positive {
+        color: #28a745;
+      }
+      
+      &.negative {
+        color: #dc3545;
+      }
+    }
+    
+    &.confidence {
+      color: #fd7e14;
+    }
+    
+    @media (max-width: 480px) {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+// 状态提示
+.status {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 40px;
-  text-align: center;
-  color: white;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  margin: 2rem auto;
+  max-width: 400px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   
-  .el-icon {
-    font-size: 24px;
+  &.loading {
+    background: #f8f9fa;
+    color: #6c757d;
+  }
+  
+  &.info {
+    background: #e7f3ff;
+    color: #0066cc;
+    border: 1px solid #b3d9ff;
+  }
+  
+  @media (max-width: 768px) {
+    margin: 1.5rem auto;
+    padding: 1.25rem;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 480px) {
+    margin: 1rem auto;
+    padding: 1rem;
+    font-size: 0.8rem;
   }
 }
 
-.error {
-  color: #f56c6c;
+// 加载动画
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e9ecef;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  
+  @media (max-width: 480px) {
+    width: 16px;
+    height: 16px;
+  }
 }
 
-@media (max-width: 768px) {
-  .hero-section h2 {
-    font-size: 2rem;
-  }
-  
-  .predictions-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .card-body {
-    grid-template-columns: 1fr;
-  }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
