@@ -173,6 +173,12 @@ build-backend:
 	docker build -t $(BACKEND_IMAGE):$(VERSION) -t $(BACKEND_IMAGE):latest -f $(BACKEND_DOCKERFILE) $(DOCKER_CONTEXT)
 	@echo "$(GREEN)✅ Go后端镜像构建完成: $(BACKEND_IMAGE):$(VERSION)$(RESET)"
 
+## 本地构建Go后端Docker镜像（避免网络问题）
+build-backend-local:
+	@echo "$(GREEN)🔨 使用本地Go环境构建后端镜像...$(RESET)"
+	./scripts/build-local.sh
+	@echo "$(GREEN)✅ 本地构建完成$(RESET)"
+
 ## 构建前端Docker镜像
 build-frontend:
 	@echo "$(GREEN)🔨 构建前端Docker镜像...$(RESET)"

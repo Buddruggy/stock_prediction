@@ -7,11 +7,16 @@ WORKDIR /app
 # 安装必要的包
 RUN apk add --no-cache git
 
+# 设置Go代理和模块配置
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=sum.golang.google.cn
+ENV GO111MODULE=on
+
 # 复制 go mod 文件
 COPY backend-go/go.mod backend-go/go.sum ./
 
-# 下载依赖
-RUN go mod download
+# 下载依赖（增加超时时间和重试）
+RUN go mod download -x
 
 # 复制源代码
 COPY backend-go/ .
