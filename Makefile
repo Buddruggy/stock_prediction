@@ -22,6 +22,7 @@ LEGACY_PORT := 9001
 BACKEND_DOCKERFILE := deployment/backend/Dockerfile
 FRONTEND_DOCKERFILE := deployment/frontend/Dockerfile
 FRONTEND_HTTPS_DOCKERFILE := deployment/frontend/Dockerfile.https
+FRONTEND_PROD_DOCKERFILE := deployment/frontend/Dockerfile.prod
 LEGACY_DOCKERFILE := deploy/docker/Dockerfile
 DOCKER_CONTEXT := .
 
@@ -32,7 +33,7 @@ RED := \033[31m
 BLUE := \033[34m
 RESET := \033[0m
 
-.PHONY: help build push pull run stop clean logs shell test dev prod deploy backend frontend legacy install-deps build-frontend-https up-https quick-https ssl-cert
+.PHONY: help build push pull run stop clean logs shell test dev prod deploy backend frontend legacy install-deps build-frontend-https up-https quick-https ssl-cert setup-letsencrypt build-prod up-prod
 
 # 默认目标
 .DEFAULT_GOAL := help
@@ -333,6 +334,53 @@ quick-https:
 		2) make up ;; \
 		*) echo "$(RED)无效选择$(RESET)" ;; \
 	esac
+
+## 配置Let's Encrypt证书
+setup-letsencrypt:
+	@echo "$(GREEN)🔐 配置Let's Encrypt SSL证书...$(RESET)"
+	@echo "$(YELLOW)请输入您的域名 (默认: gogotou.cn):$(RESET)"
+	@read -p "域名: " domain; \
+	if [ -z "$$domain" ]; then domain="gogotou.cn"; fi; \
+	echo "$(YELLOW)请输入您的邮箱:$(RESET)"; \
+	read -p "邮箱: " email; \
+	if [ -z "$$email" ]; then email="admin@$$domain"; fi; \
+	./scripts/setup-letsencrypt.sh "$$domain" "$$email"
+	@echo "$(GREEN)✅ Let's Encrypt证书配置完成$(RESET)"
+
+## 构建生产环境镜像
+build-prod:
+	@echo "$(GREEN)🔨 构建生产环境Docker镜像...$(RESET)"
+	docker build -t $(FRONTEND_IMAGE):$(VERSION)-prod -t $(FRONTEND_IMAGE):latest-prod -f $(FRONTEND_PROD_DOCKERFILE) $(DOCKER_CONTEXT)
+	@echo "$(GREEN)✅ 生产环境镜像构建完成: $(FRONTEND_IMAGE):$(VERSION)-prod$(RESET)"
+
+## 部署生产环境服务
+up-prod: build-backend build-prod
+	@echo "$(GREEN)🚀 部署生产环境HTTPS服务...$(RESET)"
+	@echo "$(YELLOW)正在创建网络...$(RESET)"
+	docker network create zhitou-network 2>/dev/null || true
+	@echo "$(YELLOW)正在启动后端服务...$(RESET)"
+	docker run -d \
+		--name $(BACKEND_CONTAINER) \
+		--network zhitou-network \
+		-p $(BACKEND_PORT):$(BACKEND_PORT) \
+		-e ENVIRONMENT=production \
+		--restart unless-stopped \
+		$(BACKEND_IMAGE):latest
+	@echo "$(YELLOW)正在启动生产环境前端服务...$(RESET)"
+	docker run -d \
+		--name $(FRONTEND_CONTAINER)-prod \
+		--network zhitou-network \
+		-p 80:80 \
+		-p 443:443 \
+		-v "/etc/letsencrypt:/etc/letsencrypt:ro" \
+		--restart unless-stopped \
+		$(FRONTEND_IMAGE):latest-prod
+	@echo "$(GREEN)✅ 生产环境HTTPS服务部署完成$(RESET)"
+	@echo "$(BLUE)🌐 HTTPS访问: https://您的域名$(RESET)"
+	@echo "$(BLUE)🌐 HTTP重定向: http://您的域名 -> https://您的域名$(RESET)"
+	@echo "$(BLUE)🌐 后端API: http://您的域名:$(BACKEND_PORT)$(RESET)"
+	@echo "$(BLUE)📚 API文档: http://您的域名:$(BACKEND_PORT)/docs$(RESET)"
+	@echo "$(YELLOW)💡 使用 'make stop' 停止服务$(RESET)"
 
 ## 健康检查
 health:
