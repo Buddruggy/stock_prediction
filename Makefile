@@ -143,11 +143,12 @@ up: stop
 	docker run -d \
 		--name $(FRONTEND_CONTAINER) \
 		--network zhitou-network \
+		-p 80:80 \
 		-p $(FRONTEND_PORT):$(FRONTEND_PORT) \
 		--restart unless-stopped \
 		$(FRONTEND_IMAGE):latest
 	@echo "$(GREEN)✅ 前后端服务部署完成$(RESET)"
-	@echo "$(BLUE)🌐 前端访问: http://localhost:$(FRONTEND_PORT)$(RESET)"
+	@echo "$(BLUE)🌐 前端访问: http://localhost:80 或 http://localhost:$(FRONTEND_PORT)$(RESET)"
 	@echo "$(BLUE)🌐 后端API: http://localhost:$(BACKEND_PORT)$(RESET)"
 	@echo "$(BLUE)📚 API文档: http://localhost:$(BACKEND_PORT)/docs$(RESET)"
 	@echo "$(YELLOW)💡 使用 'make stop' 停止服务$(RESET)"

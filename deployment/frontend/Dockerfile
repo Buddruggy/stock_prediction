@@ -44,10 +44,10 @@ USER app
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9000/ || exit 1
+    CMD curl -f http://localhost:80/ || exit 1
 
 # 暴露端口
-EXPOSE 9000
+EXPOSE 80 9000
 
 # 启动nginx
 CMD ["nginx", "-g", "daemon off;"]
