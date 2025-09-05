@@ -4,8 +4,9 @@ FROM golang:1.21-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
-# 安装必要的包
-RUN apk add --no-cache git ca-certificates tzdata
+# 使用国内Alpine镜像源加速包安装
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk add --no-cache git ca-certificates tzdata
 
 # 设置Go代理和模块配置（使用国内镜像源）
 ENV GOPROXY=https://goproxy.cn,direct
@@ -30,8 +31,9 @@ RUN go build -a -installsuffix cgo -ldflags '-w -s' -o main ./cmd/main.go
 # 运行阶段
 FROM alpine:latest
 
-# 安装 ca-certificates 和 curl
-RUN apk --no-cache add ca-certificates curl tzdata
+# 使用国内Alpine镜像源加速包安装
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk --no-cache add ca-certificates curl tzdata
 
 # 设置时区
 ENV TZ=Asia/Shanghai
