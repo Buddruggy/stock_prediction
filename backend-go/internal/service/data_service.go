@@ -228,12 +228,13 @@ func (ds *DataService) parseTencentResponse(body, symbol string) (*model.StockDa
 
 	// 创建股票数据
 	stockData := &model.StockData{
-		Date:   time.Now(),
-		Open:   todayOpen,
-		High:   todayHigh,
-		Low:    todayLow,
-		Close:  currentPrice,
-		Volume: volume * 100, // 腾讯返回的是手数，需要转换为股数
+		Date:           time.Now(),
+		Open:           todayOpen,
+		High:           todayHigh,
+		Low:            todayLow,
+		Close:          currentPrice,
+		YesterdayClose: yesterdayClose, // 保存昨收价
+		Volume:         volume * 100,   // 腾讯返回的是手数，需要转换为股数
 	}
 
 	log.Printf("腾讯财经数据 %s: 当前价=%.2f, 昨收=%.2f, 今开=%.2f", symbol, currentPrice, yesterdayClose, todayOpen)
@@ -268,12 +269,13 @@ func (ds *DataService) generateHistoryFromCurrent(currentData *model.StockData, 
 			volume := currentData.Volume * int64(0.5+rand.Float64())
 
 			data = append(data, model.StockData{
-				Date:   date,
-				Open:   math.Round(open*100) / 100,
-				High:   math.Round(high*100) / 100,
-				Low:    math.Round(low*100) / 100,
-				Close:  math.Round(price*100) / 100,
-				Volume: volume,
+				Date:           date,
+				Open:           math.Round(open*100) / 100,
+				High:           math.Round(high*100) / 100,
+				Low:            math.Round(low*100) / 100,
+				Close:          math.Round(price*100) / 100,
+				YesterdayClose: math.Round((price*0.995)*100) / 100, // 估算昨收价
+				Volume:         volume,
 			})
 		}
 	}
@@ -323,12 +325,13 @@ func (ds *DataService) generateMockData(symbol string, period string) []model.St
 		volume := int64(1000000 + rand.Intn(9000000))
 
 		data = append(data, model.StockData{
-			Date:   date,
-			Open:   math.Round(openPrice*100) / 100,
-			High:   math.Round(highPrice*100) / 100,
-			Low:    math.Round(lowPrice*100) / 100,
-			Close:  math.Round(closePrice*100) / 100,
-			Volume: volume,
+			Date:           date,
+			Open:           math.Round(openPrice*100) / 100,
+			High:           math.Round(highPrice*100) / 100,
+			Low:            math.Round(lowPrice*100) / 100,
+			Close:          math.Round(closePrice*100) / 100,
+			YesterdayClose: math.Round((closePrice*0.995)*100) / 100, // 估算昨收价
+			Volume:         volume,
 		})
 	}
 
@@ -387,6 +390,32 @@ func (ds *DataService) GetCurrentPrice(symbol string) (float64, error) {
 	// 缓存价格
 	ds.setCache(cacheKey, price, 5*time.Minute)
 	return price, nil
+}
+
+// GetCurrentStockData 获取当前完整股票数据（包含昨收价）
+func (ds *DataService) GetCurrentStockData(symbol string) (*model.StockData, error) {
+	cacheKey := fmt.Sprintf("stock_data_%s", symbol)
+
+	// 检查缓存
+	if cached, found := ds.getCache(cacheKey); found {
+		return cached.(*model.StockData), nil
+	}
+
+	// 转换为腾讯财经的股票代码格式
+	tencentSymbol := ds.convertToTencentSymbol(symbol)
+	if tencentSymbol == "" {
+		return nil, fmt.Errorf("不支持的股票代码: %s", symbol)
+	}
+
+	// 获取腾讯财经实时数据
+	stockData, err := ds.fetchTencentCurrentData(tencentSymbol)
+	if err != nil {
+		return nil, fmt.Errorf("获取腾讯财经数据失败: %v", err)
+	}
+
+	// 缓存数据
+	ds.setCache(cacheKey, stockData, 5*time.Minute)
+	return stockData, nil
 }
 
 // fetchRealCurrentPrice 获取真实当前价格
@@ -586,12 +615,15 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 		return nil, err
 	}
 
-	// 获取当前价格
-	currentPrice, err := ds.GetCurrentPrice(index.Symbol)
+	// 获取完整的当前数据（包含昨收价）
+	currentStockData, err := ds.GetCurrentStockData(index.Symbol)
 	if err != nil {
-		log.Printf("获取当前价格失败 %s: %v", index.Symbol, err)
+		log.Printf("获取当前股票数据失败 %s: %v", index.Symbol, err)
 		return nil, err
 	}
+
+	currentPrice := currentStockData.Close
+	yesterdayClose := currentStockData.YesterdayClose
 
 	// 计算技术指标
 	indicators := ds.CalculateTechnicalIndicators(historicalData)
@@ -599,9 +631,9 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 	// 预测价格和置信度
 	predictedPrice, confidence := ds.PredictPriceAndConfidence(currentPrice, indicators)
 
-	// 计算变化
-	change := currentPrice - ds.getBasePrice(index.Symbol)
-	changePercent := (change / ds.getBasePrice(index.Symbol)) * 100
+	// 使用昨收价计算正确的涨跌幅
+	change := currentPrice - yesterdayClose
+	changePercent := (change / yesterdayClose) * 100
 
 	predictedChange := predictedPrice - currentPrice
 	predictedPercent := (predictedChange / currentPrice) * 100
@@ -671,14 +703,18 @@ func (ds *DataService) GetIndexInfo(indexCode string) (*model.IndexInfo, error) 
 		return nil, fmt.Errorf("指数不存在: %s", indexCode)
 	}
 
-	currentPrice, err := ds.GetCurrentPrice(index.Symbol)
+	// 获取完整的当前数据（包含昨收价）
+	currentStockData, err := ds.GetCurrentStockData(index.Symbol)
 	if err != nil {
 		return nil, err
 	}
 
-	basePrice := ds.getBasePrice(index.Symbol)
-	change := currentPrice - basePrice
-	changePercent := (change / basePrice) * 100
+	currentPrice := currentStockData.Close
+	yesterdayClose := currentStockData.YesterdayClose
+
+	// 使用昨收价计算正确的涨跌幅
+	change := currentPrice - yesterdayClose
+	changePercent := (change / yesterdayClose) * 100
 
 	return &model.IndexInfo{
 		Code:          index.Code,
@@ -688,7 +724,7 @@ func (ds *DataService) GetIndexInfo(indexCode string) (*model.IndexInfo, error) 
 		Price:         math.Round(currentPrice*100) / 100,
 		Change:        math.Round(change*100) / 100,
 		ChangePercent: math.Round(changePercent*100) / 100,
-		Volume:        int64(1000000 + rand.Intn(9000000)),
+		Volume:        currentStockData.Volume,
 		Timestamp:     time.Now().UTC().Format(time.RFC3339),
 	}, nil
 }

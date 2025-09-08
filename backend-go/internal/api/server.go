@@ -115,7 +115,7 @@ func (s *Server) getAllPredictions(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, model.APIResponse{
 		Code:      200,
 		Message:   "success",

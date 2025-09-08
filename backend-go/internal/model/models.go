@@ -75,10 +75,11 @@ type DataSourceStatus struct {
 
 // StockData 股票数据
 type StockData struct {
-	Date   time.Time `json:"date"`
-	Open   float64   `json:"open"`
-	High   float64   `json:"high"`
-	Low    float64   `json:"low"`
-	Close  float64   `json:"close"`
-	Volume int64     `json:"volume"`
+	Date           time.Time `json:"date"`
+	Open           float64   `json:"open"`
+	High           float64   `json:"high"`
+	Low            float64   `json:"low"`
+	Close          float64   `json:"close"`
+	YesterdayClose float64   `json:"yesterday_close"` // 昨收价
+	Volume         int64     `json:"volume"`
 }
