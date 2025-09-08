@@ -44,7 +44,8 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="status loading">
       <div class="spinner"></div>
-      <span>正在获取数据...</span>
+      <span v-if="Object.keys(predictions).length === 0">正在获取预测数据...</span>
+      <span v-else>正在加载更多指数预测... ({{ Object.keys(predictions).length }}/4 已完成)</span>
     </div>
 
     <!-- 错误状态 -->
@@ -76,31 +77,69 @@ const formatChange = (change, changePercent) => {
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`
 }
 
+// 支持的指数列表
+const indices = [
+  { code: 'sh000001', name: '上证综指' },
+  { code: 'sz399001', name: '深证成指' },
+  { code: 'sz399006', name: '创业板指' },
+  { code: 'sh000688', name: '科创50' }
+]
+
 const fetchPredictions = async () => {
   loading.value = true
   error.value = ''
+  predictions.value = {} // 清空之前的预测结果
   
-  try {
-    const response = await axios.get('/api/v1/predict/all', {
-      timeout: 60000 // 60秒超时，与DeepSeek API超时保持一致
-    })
+  let hasAnySuccess = false
+  let allErrors = []
+  
+  // 逐个获取每个指数的预测
+  for (const index of indices) {
+    try {
+      console.log(`正在获取 ${index.name}(${index.code}) 的预测数据...`)
+      
+      const response = await axios.get(`/api/v1/predict/${index.code}`, {
+        timeout: 60000 // 60秒超时，给单个指数预测足够时间
+      })
+      
+      if (response.data.code === 200) {
+        // 成功获取预测，立即更新UI
+        predictions.value[index.code] = response.data.data
+        hasAnySuccess = true
+        console.log(`${index.name} 预测获取成功`)
+      } else {
+        console.warn(`${index.name} 预测失败: ${response.data.message}`)
+        allErrors.push(`${index.name}: ${response.data.message}`)
+      }
+    } catch (err) {
+      let errorMsg = ''
+      if (err.code === 'ECONNABORTED') {
+        errorMsg = '请求超时'
+      } else if (err.response) {
+        errorMsg = `服务器错误(${err.response.status}): ${err.response.data?.message || err.message}`
+      } else {
+        errorMsg = `网络错误: ${err.message}`
+      }
+      
+      console.warn(`${index.name} 预测失败: ${errorMsg}`)
+      allErrors.push(`${index.name}: ${errorMsg}`)
+    }
     
-    if (response.data.code === 200) {
-      predictions.value = response.data.data
-    } else {
-      error.value = `API错误: ${response.data.message}`
+    // 在每次请求之间稍作停顿，避免服务器压力过大
+    if (indices.indexOf(index) < indices.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
-  } catch (err) {
-    if (err.code === 'ECONNABORTED') {
-      error.value = '请求超时：AI预测服务响应耗时较长，请检查网络或稍后重试'
-    } else if (err.response) {
-      error.value = `服务器错误: ${err.response.status} - ${err.response.data?.message || err.message}`
-    } else {
-      error.value = `网络错误: ${err.message}`
-    }
-  } finally {
-    loading.value = false
   }
+  
+  // 处理最终结果
+  if (!hasAnySuccess) {
+    error.value = `所有指数预测失败:\n${allErrors.join('\n')}`
+  } else if (allErrors.length > 0) {
+    // 有部分成功，显示部分错误但不影响成功的结果
+    console.warn('部分指数预测失败:', allErrors)
+  }
+  
+  loading.value = false
 }
 
 onMounted(() => {
