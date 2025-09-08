@@ -623,7 +623,6 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 	}
 
 	currentPrice := currentStockData.Close
-	yesterdayClose := currentStockData.YesterdayClose
 
 	// 计算技术指标
 	indicators := ds.CalculateTechnicalIndicators(historicalData)
@@ -631,20 +630,15 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 	// 预测价格和置信度
 	predictedPrice, confidence := ds.PredictPriceAndConfidence(currentPrice, indicators)
 
-	// 使用昨收价计算正确的涨跌幅
-	change := currentPrice - yesterdayClose
-	changePercent := (change / yesterdayClose) * 100
-
+	// 计算预测涨跌幅（预测价格相对于当前价格的变化）
 	predictedChange := predictedPrice - currentPrice
 	predictedPercent := (predictedChange / currentPrice) * 100
 
-	// 更新指数信息
+	// 更新指数信息（只保留预测涨跌比例）
 	index.Current = math.Round(currentPrice*100) / 100
 	index.Predicted = predictedPrice
-	index.Change = math.Round(change*100) / 100
-	index.ChangePercent = math.Round(changePercent*100) / 100
-	index.PredictedChange = math.Round(predictedChange*100) / 100
-	index.PredictedPercent = math.Round(predictedPercent*100) / 100
+	index.Change = math.Round(predictedChange*100) / 100         // 预测涨跌金额
+	index.ChangePercent = math.Round(predictedPercent*100) / 100 // 预测涨跌百分比
 	index.Confidence = confidence
 	index.TechnicalIndicators = indicators
 	index.Timestamp = time.Now().UTC().Format(time.RFC3339)

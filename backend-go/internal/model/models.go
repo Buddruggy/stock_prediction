@@ -10,10 +10,8 @@ type StockIndex struct {
 	Market              string              `json:"market"`
 	Current             float64             `json:"current"`
 	Predicted           float64             `json:"predicted"`
-	Change              float64             `json:"change"`
-	ChangePercent       float64             `json:"changePercent"`
-	PredictedChange     float64             `json:"predictedChange"`
-	PredictedPercent    float64             `json:"predictedPercent"`
+	Change              float64             `json:"change"`        // 预测涨跌金额
+	ChangePercent       float64             `json:"changePercent"` // 预测涨跌百分比
 	Confidence          float64             `json:"confidence"`
 	TechnicalIndicators TechnicalIndicators `json:"technical_indicators"`
 	Timestamp           string              `json:"timestamp"`

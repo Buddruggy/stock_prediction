@@ -27,9 +27,9 @@
             <span class="label">预测涨跌</span>
             <span 
               class="value change" 
-              :class="{ positive: prediction.predictedChange > 0, negative: prediction.predictedChange < 0 }"
+              :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
             >
-              {{ formatChange(prediction.predictedChange, prediction.predictedPercent) }}
+              {{ formatChange(prediction.change, prediction.changePercent) }}
             </span>
           </div>
           
@@ -65,10 +65,8 @@ const mockData = {
     market: 'Shanghai',
     current: 3142.56,
     predicted: 3168.23,
-    change: 25.67,
-    changePercent: 0.82,
-    predictedChange: 25.67,
-    predictedPercent: 0.82,
+    change: 25.67,        // 预测涨跌金额
+    changePercent: 0.82,  // 预测涨跌百分比
     confidence: 78.5
   },
   sz399001: {
@@ -76,10 +74,8 @@ const mockData = {
     market: 'Shenzhen',
     current: 10234.78,
     predicted: 10187.45,
-    change: -47.33,
-    changePercent: -0.46,
-    predictedChange: -47.33,
-    predictedPercent: -0.46,
+    change: -47.33,       // 预测涨跌金额
+    changePercent: -0.46, // 预测涨跌百分比
     confidence: 72.3
   },
   sz399006: {
@@ -87,10 +83,8 @@ const mockData = {
     market: 'ChiNext',
     current: 2156.89,
     predicted: 2178.12,
-    change: 21.23,
-    changePercent: 0.98,
-    predictedChange: 21.23,
-    predictedPercent: 0.98,
+    change: 21.23,        // 预测涨跌金额
+    changePercent: 0.98,  // 预测涨跌百分比
     confidence: 65.8
   },
   sh000688: {
@@ -98,10 +92,8 @@ const mockData = {
     market: 'STAR50',
     current: 987.45,
     predicted: 994.67,
-    change: 7.22,
-    changePercent: 0.73,
-    predictedChange: 7.22,
-    predictedPercent: 0.73,
+    change: 7.22,         // 预测涨跌金额
+    changePercent: 0.73,  // 预测涨跌百分比
     confidence: 69.2
   }
 }
