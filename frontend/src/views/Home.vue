@@ -82,7 +82,7 @@ const fetchPredictions = async () => {
   
   try {
     const response = await axios.get('/api/v1/predict/all', {
-      timeout: 45000 // 45秒超时，给DeepSeek AI和腾讯财经足够时间
+      timeout: 60000 // 60秒超时，与DeepSeek API超时保持一致
     })
     
     if (response.data.code === 200) {

@@ -591,7 +591,7 @@ func (ds *DataService) predictWithDeepSeek(currentPrice float64, indicators mode
 	}
 
 	// 创建带超时的Context
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	// 发送请求到DeepSeek API
