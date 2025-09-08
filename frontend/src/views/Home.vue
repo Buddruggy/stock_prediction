@@ -24,12 +24,12 @@
           </div>
           
           <div class="price-item">
-            <span class="label">涨跌</span>
+            <span class="label">预测涨跌</span>
             <span 
               class="value change" 
-              :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
+              :class="{ positive: prediction.predictedChange > 0, negative: prediction.predictedChange < 0 }"
             >
-              {{ formatChange(prediction.change, prediction.changePercent) }}
+              {{ formatChange(prediction.predictedChange, prediction.predictedPercent) }}
             </span>
           </div>
           
@@ -67,6 +67,8 @@ const mockData = {
     predicted: 3168.23,
     change: 25.67,
     changePercent: 0.82,
+    predictedChange: 25.67,
+    predictedPercent: 0.82,
     confidence: 78.5
   },
   sz399001: {
@@ -76,6 +78,8 @@ const mockData = {
     predicted: 10187.45,
     change: -47.33,
     changePercent: -0.46,
+    predictedChange: -47.33,
+    predictedPercent: -0.46,
     confidence: 72.3
   },
   sz399006: {
@@ -85,6 +89,8 @@ const mockData = {
     predicted: 2178.12,
     change: 21.23,
     changePercent: 0.98,
+    predictedChange: 21.23,
+    predictedPercent: 0.98,
     confidence: 65.8
   },
   sh000688: {
@@ -94,6 +100,8 @@ const mockData = {
     predicted: 994.67,
     change: 7.22,
     changePercent: 0.73,
+    predictedChange: 7.22,
+    predictedPercent: 0.73,
     confidence: 69.2
   }
 }
