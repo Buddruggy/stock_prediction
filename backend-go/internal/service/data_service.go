@@ -72,6 +72,11 @@ type DataService struct {
 	httpClient  *resty.Client
 	deepSeekKey string
 	deepSeekURL string
+	timer       *time.Timer
+	stopChan    chan bool
+	dailyPredictions map[string]*model.StockIndex // 每日预测缓存
+	dailyPredictionsTime time.Time // 预测生成时间
+	dailyMutex  sync.RWMutex
 }
 
 // StockIndices 股票指数配置
@@ -104,7 +109,7 @@ var StockIndices = map[string]model.StockIndex{
 
 // NewDataService 创建数据服务实例
 func NewDataService() *DataService {
-	return &DataService{
+	ds := &DataService{
 		cache: make(map[string]*CacheItem),
 		httpClient: resty.New().
 			SetTimeout(30 * time.Second).
@@ -112,7 +117,18 @@ func NewDataService() *DataService {
 			SetRetryWaitTime(1 * time.Second),
 		deepSeekKey: "sk-f3a1fb35364b48adb7a2e9a79160495e",       // DeepSeek API Key
 		deepSeekURL: "https://api.deepseek.com/chat/completions", // DeepSeek API URL
+		dailyPredictions: make(map[string]*model.StockIndex),
+		stopChan: make(chan bool),
 	}
+	
+	// 启动定时任务：每天凌晨2点执行预测
+	go ds.startDailyScheduler()
+	
+	// 启动时检查是否需要立即执行预测
+	go ds.checkAndPerformInitialPrediction()
+	
+	log.Printf("🔄 定时预测任务已启动，每天凌晨2点执行")
+	return ds
 }
 
 // GetStockData 获取股票历史数据
@@ -738,59 +754,33 @@ func (ds *DataService) parseAIPrediction(content string) (*PredictionResult, err
 
 // GetPredictionData 获取预测数据
 func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, error) {
-	index, exists := StockIndices[indexCode]
-	if !exists {
-		log.Printf("指数不存在: %s", indexCode)
-		return nil, fmt.Errorf("指数不存在: %s", indexCode)
+	// 先尝试从日常预测缓存获取
+	if dailyPredictions, predictTime, ok := ds.GetDailyPredictions(); ok {
+		if prediction, exists := dailyPredictions[indexCode]; exists {
+			log.Printf("📊 从日常预测缓存获取 %s (预测时间: %s)", indexCode, predictTime.Format("2006-01-02 15:04:05"))
+			return prediction, nil
+		}
 	}
-
-	// 获取历史数据
-	historicalData, err := ds.GetStockData(index.Symbol, "1mo")
-	if err != nil {
-		log.Printf("获取历史数据失败 %s: %v", index.Symbol, err)
-		return nil, fmt.Errorf("获取历史数据失败: %v", err)
-	}
-
-	// 获取当前数据
-	currentStockData, err := ds.GetCurrentStockData(index.Symbol)
-	if err != nil {
-		log.Printf("获取当前股票数据失败 %s: %v", index.Symbol, err)
-		return nil, fmt.Errorf("获取当前数据失败: %v", err)
-	}
-
-	currentPrice := currentStockData.Close
-
-	// 计算技术指标
-	indicators := ds.CalculateTechnicalIndicators(historicalData)
-
-	// 预测价格和置信度（传入历史数据）
-	predictedPrice, confidence := ds.PredictPriceAndConfidenceWithHistory(currentPrice, indicators, historicalData)
-	if predictedPrice == 0 && confidence == 0 {
-		return nil, fmt.Errorf("DeepSeek AI预测失败")
-	}
-
-	// 计算预测涨跌幅（预测价格相对于当前价格的变化）
-	predictedChange := predictedPrice - currentPrice
-	predictedPercent := (predictedChange / currentPrice) * 100
-
-	// 更新指数信息（只保留预测涨跌比例）
-	index.Current = math.Round(currentPrice*100) / 100
-	index.Predicted = predictedPrice
-	index.Change = math.Round(predictedChange*100) / 100         // 预测涨跌金额
-	index.ChangePercent = math.Round(predictedPercent*100) / 100 // 预测涨跌百分比
-	index.Confidence = confidence
-	index.TechnicalIndicators = indicators
-	index.Timestamp = time.Now().UTC().Format(time.RFC3339)
-
-	return &index, nil
+	
+	// 如果缓存中没有，则实时计算（作为回退机制）
+	log.Printf("⚠️ 日常预测缓存中未找到 %s，使用实时预测", indexCode)
+	return ds.generateSinglePrediction(indexCode)
 }
 
 // GetAllPredictions 获取所有预测数据
 func (ds *DataService) GetAllPredictions() (map[string]*model.StockIndex, error) {
+	// 先尝试从日常预测缓存获取
+	if dailyPredictions, predictTime, ok := ds.GetDailyPredictions(); ok {
+		log.Printf("📊 从日常预测缓存获取所有指数 (预测时间: %s)", predictTime.Format("2006-01-02 15:04:05"))
+		return dailyPredictions, nil
+	}
+	
+	// 如果缓存中没有，则逐个实时获取（作为回退机制）
+	log.Printf("⚠️ 日常预测缓存为空，使用实时预测")
 	predictions := make(map[string]*model.StockIndex)
 
 	for code := range StockIndices {
-		prediction, err := ds.GetPredictionData(code)
+		prediction, err := ds.generateSinglePrediction(code)
 		if err != nil {
 			log.Printf("获取预测数据失败 %s: %v", code, err)
 			continue
@@ -956,5 +946,188 @@ func (ds *DataService) ClearCache() {
 	defer ds.cacheMutex.Unlock()
 
 	ds.cache = make(map[string]*CacheItem)
-	log.Printf("缓存已清除")
+	log.Printf("🗑️ 缓存已清除")
+}
+
+// checkAndPerformInitialPrediction 检查是否需要立即执行预测
+func (ds *DataService) checkAndPerformInitialPrediction() {
+	// 等待系统初始化完成
+	time.Sleep(2 * time.Second)
+	
+	ds.dailyMutex.RLock()
+	isEmpty := len(ds.dailyPredictions) == 0
+	lastPredictTime := ds.dailyPredictionsTime
+	ds.dailyMutex.RUnlock()
+	
+	// 如果没有缓存或者缓存已过期（超过24小时），则立即执行预测
+	if isEmpty || time.Since(lastPredictTime) > 24*time.Hour {
+		log.Printf("🚀 系统启动时检测到需要更新预测数据，立即执行...")
+		ds.performDailyPrediction()
+	} else {
+		log.Printf("📊 发现有效的日常预测缓存，无需重新预测")
+	}
+}
+
+// startDailyScheduler 启动每日定时调度器
+func (ds *DataService) startDailyScheduler() {
+	for {
+		// 计算下一次凌晨2点的时间
+		now := time.Now()
+		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 2, 0, 0, 0, now.Location())
+		
+		// 如果当前时间在凌晨2点之前，则今天就执行
+		if now.Hour() < 2 {
+			nextRun = time.Date(now.Year(), now.Month(), now.Day(), 2, 0, 0, 0, now.Location())
+		}
+		
+		duration := nextRun.Sub(now)
+		log.Printf("🕰️ 下一次预测任务将在 %v 后执行 (%s)", duration, nextRun.Format("2006-01-02 15:04:05"))
+		
+		// 设置定时器
+		ds.timer = time.NewTimer(duration)
+		
+		select {
+		case <-ds.timer.C:
+			// 时间到，执行预测
+			ds.performDailyPrediction()
+		case <-ds.stopChan:
+			// 收到停止信号
+			if ds.timer != nil {
+				ds.timer.Stop()
+			}
+			return
+		}
+	}
+}
+
+// performDailyPrediction 执行每日预测任务
+func (ds *DataService) performDailyPrediction() {
+	log.Printf("🤖 开始执行每日预测任务...")
+	start := time.Now()
+	
+	newPredictions := make(map[string]*model.StockIndex)
+	successCount := 0
+	failedCount := 0
+	
+	// 逐个预测每个指数
+	for indexCode := range StockIndices {
+		log.Printf("📊 正在预测 %s...", indexCode)
+		
+		prediction, err := ds.generateSinglePrediction(indexCode)
+		if err != nil {
+			log.Printf("❌ %s 预测失败: %v", indexCode, err)
+			failedCount++
+			// 即使某个指数预测失败，也继续其他指数
+			continue
+		}
+		
+		newPredictions[indexCode] = prediction
+		successCount++
+		log.Printf("✅ %s 预测成功: 当前=%.2f, 预测=%.2f, 置信度=%.1f%%", 
+			indexCode, prediction.Current, prediction.Predicted, prediction.Confidence)
+		
+		// 防止请求过于频繁
+		time.Sleep(2 * time.Second)
+	}
+	
+	// 更新缓存
+	ds.dailyMutex.Lock()
+	ds.dailyPredictions = newPredictions
+	ds.dailyPredictionsTime = time.Now()
+	ds.dailyMutex.Unlock()
+	
+	duration := time.Since(start)
+	log.Printf("🎆 每日预测任务完成! 成功: %d, 失败: %d, 耗时: %v", 
+		successCount, failedCount, duration)
+	
+	// 清理旧的短期缓存
+	ds.ClearCache()
+}
+
+// generateSinglePrediction 生成单个指数的预测（专用于定时任务）
+func (ds *DataService) generateSinglePrediction(indexCode string) (*model.StockIndex, error) {
+	index, exists := StockIndices[indexCode]
+	if !exists {
+		return nil, fmt.Errorf("指数不存在: %s", indexCode)
+	}
+
+	// 获取历史数据
+	historicalData, err := ds.GetStockData(index.Symbol, "1mo")
+	if err != nil {
+		return nil, fmt.Errorf("获取历史数据失败: %v", err)
+	}
+
+	// 获取当前数据
+	currentStockData, err := ds.GetCurrentStockData(index.Symbol)
+	if err != nil {
+		return nil, fmt.Errorf("获取当前数据失败: %v", err)
+	}
+
+	currentPrice := currentStockData.Close
+
+	// 计算技术指标
+	indicators := ds.CalculateTechnicalIndicators(historicalData)
+
+	// 预测价格和置信度（传入历史数据）
+	predictedPrice, confidence := ds.PredictPriceAndConfidenceWithHistory(currentPrice, indicators, historicalData)
+	if predictedPrice == 0 && confidence == 0 {
+		return nil, fmt.Errorf("DeepSeek AI预测失败")
+	}
+
+	// 计算预测涨跌幅（预测价格相对于当前价格的变化）
+	predictedChange := predictedPrice - currentPrice
+	predictedPercent := (predictedChange / currentPrice) * 100
+
+	// 更新指数信息（只保留预测涨跌比例）
+	index.Current = math.Round(currentPrice*100) / 100
+	index.Predicted = predictedPrice
+	index.Change = math.Round(predictedChange*100) / 100         // 预测涨跌金额
+	index.ChangePercent = math.Round(predictedPercent*100) / 100 // 预测涨跌百分比
+	index.Confidence = confidence
+	index.TechnicalIndicators = indicators
+	index.Timestamp = time.Now().UTC().Format(time.RFC3339)
+
+	return &index, nil
+}
+
+// GetDailyPredictions 获取日常预测缓存
+func (ds *DataService) GetDailyPredictions() (map[string]*model.StockIndex, time.Time, bool) {
+	ds.dailyMutex.RLock()
+	defer ds.dailyMutex.RUnlock()
+	
+	if len(ds.dailyPredictions) == 0 {
+		return nil, time.Time{}, false
+	}
+	
+	// 检查缓存是否在24小时内
+	if time.Since(ds.dailyPredictionsTime) > 24*time.Hour {
+		return nil, time.Time{}, false
+	}
+	
+	// 返回缓存数据的副本
+	result := make(map[string]*model.StockIndex)
+	for k, v := range ds.dailyPredictions {
+		result[k] = v
+	}
+	
+	return result, ds.dailyPredictionsTime, true
+}
+
+// RefreshDailyPredictions 手动刷新每日预测缓存（公开接口）
+func (ds *DataService) RefreshDailyPredictions() {
+	log.Printf("🔄 手动触发预测缓存刷新")
+	ds.performDailyPrediction()
+}
+
+// Stop 停止定时任务
+func (ds *DataService) Stop() {
+	select {
+	case ds.stopChan <- true:
+		log.Printf("🛑 定时预测任务已停止")
+	default:
+		// 如果信道已满，不做任何操作
+	}
+	if ds.timer != nil {
+		ds.timer.Stop()
+	}
 }
