@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -20,11 +22,56 @@ type CacheItem struct {
 	ExpiresAt time.Time
 }
 
+// DeepSeekRequest DeepSeek API请求结构
+type DeepSeekRequest struct {
+	Model       string            `json:"model"`
+	Messages    []DeepSeekMessage `json:"messages"`
+	MaxTokens   int               `json:"max_tokens"`
+	Temperature float64           `json:"temperature"`
+	Stream      bool              `json:"stream"`
+}
+
+// DeepSeekMessage DeepSeek消息结构
+type DeepSeekMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// DeepSeekResponse DeepSeek API响应结构
+type DeepSeekResponse struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	Model   string `json:"model"`
+	Choices []struct {
+		Index   int `json:"index"`
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+// PredictionResult AI预测结果结构
+type PredictionResult struct {
+	PredictedPrice float64 `json:"predicted_price"`
+	Confidence     float64 `json:"confidence"`
+	Reasoning      string  `json:"reasoning"`
+}
+
 // DataService 数据服务
 type DataService struct {
-	cache      map[string]*CacheItem
-	cacheMutex sync.RWMutex
-	httpClient *resty.Client
+	cache       map[string]*CacheItem
+	cacheMutex  sync.RWMutex
+	httpClient  *resty.Client
+	deepSeekKey string
+	deepSeekURL string
 }
 
 // StockIndices 股票指数配置
@@ -63,6 +110,8 @@ func NewDataService() *DataService {
 			SetTimeout(30 * time.Second).
 			SetRetryCount(3).
 			SetRetryWaitTime(1 * time.Second),
+		deepSeekKey: "sk-f3a1fb35364b48adb7a2e9a79160495e",       // DeepSeek API Key
+		deepSeekURL: "https://api.deepseek.com/chat/completions", // DeepSeek API URL
 	}
 }
 
@@ -76,11 +125,14 @@ func (ds *DataService) GetStockData(symbol string, period string) ([]model.Stock
 		return cached.([]model.StockData), nil
 	}
 
-	// 尝试获取真实数据
+	// 只尝试获取真实数据，失败则直接返回错误
 	data, err := ds.fetchRealData(symbol, period)
-	if err != nil || len(data) == 0 {
-		log.Printf("获取真实数据失败 %s: %v，使用模拟数据", symbol, err)
-		data = ds.generateMockData(symbol, period)
+	if err != nil {
+		return nil, fmt.Errorf("获取真实数据失败: %v", err)
+	}
+
+	if len(data) == 0 {
+		return nil, fmt.Errorf("获取的历史数据为空")
 	}
 
 	// 缓存数据
@@ -131,8 +183,23 @@ func (ds *DataService) fetchTencentKLineData(symbol string, period string) ([]mo
 		return nil, fmt.Errorf("获取当前数据失败: %v", err)
 	}
 
-	// 生成历史数据（基于当前数据）
-	days := ds.getPeriodDays(period)
+	// 根据周期确定天数
+	days := 30 // 默认一个月
+	switch period {
+	case "1d":
+		days = 1
+	case "5d":
+		days = 5
+	case "1mo":
+		days = 30
+	case "3mo":
+		days = 90
+	case "6mo":
+		days = 180
+	case "1y":
+		days = 365
+	}
+
 	if days > 250 {
 		days = 250 // 限制最多250天数据
 	}
@@ -302,74 +369,9 @@ func (ds *DataService) parseInt64(s string) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
 }
 
-// generateMockData 生成模拟数据
-func (ds *DataService) generateMockData(symbol string, period string) []model.StockData {
-	days := ds.getPeriodDays(period)
-	basePrice := ds.getBasePrice(symbol)
+// 删除了generateMockData函数 - 不再使用模拟数据
 
-	var data []model.StockData
-	currentPrice := basePrice
-
-	for i := 0; i < days; i++ {
-		date := time.Now().AddDate(0, 0, -days+i+1)
-
-		// 生成价格波动
-		changePercent := rand.Float64()*0.1 - 0.05 // ±5%的日波动
-		currentPrice *= (1 + changePercent)
-
-		// 生成OHLCV
-		openPrice := currentPrice * (0.98 + rand.Float64()*0.04)
-		highPrice := math.Max(openPrice, currentPrice) * (1.0 + rand.Float64()*0.03)
-		lowPrice := math.Min(openPrice, currentPrice) * (0.97 + rand.Float64()*0.03)
-		closePrice := currentPrice
-		volume := int64(1000000 + rand.Intn(9000000))
-
-		data = append(data, model.StockData{
-			Date:           date,
-			Open:           math.Round(openPrice*100) / 100,
-			High:           math.Round(highPrice*100) / 100,
-			Low:            math.Round(lowPrice*100) / 100,
-			Close:          math.Round(closePrice*100) / 100,
-			YesterdayClose: math.Round((closePrice*0.995)*100) / 100, // 估算昨收价
-			Volume:         volume,
-		})
-	}
-
-	log.Printf("生成模拟数据: %s, 数据量: %d", symbol, len(data))
-	return data
-}
-
-// getPeriodDays 获取周期天数
-func (ds *DataService) getPeriodDays(period string) int {
-	periodMap := map[string]int{
-		"1d":  1,
-		"5d":  5,
-		"1mo": 30,
-		"3mo": 90,
-		"6mo": 180,
-		"1y":  365,
-		"2y":  730,
-		"5y":  1825,
-	}
-	if days, exists := periodMap[period]; exists {
-		return days
-	}
-	return 30
-}
-
-// getBasePrice 获取基础价格
-func (ds *DataService) getBasePrice(symbol string) float64 {
-	basePrices := map[string]float64{
-		"000001.SS": 3000,  // 上证综指
-		"399001.SZ": 10000, // 深证成指
-		"399006.SZ": 2000,  // 创业板指
-		"000688.SS": 1000,  // 科创50
-	}
-	if price, exists := basePrices[symbol]; exists {
-		return price
-	}
-	return 3000
-}
+// 删除了getPeriodDays和getBasePrice函数 - 不再需要
 
 // GetCurrentPrice 获取当前价格
 func (ds *DataService) GetCurrentPrice(symbol string) (float64, error) {
@@ -380,11 +382,10 @@ func (ds *DataService) GetCurrentPrice(symbol string) (float64, error) {
 		return cached.(float64), nil
 	}
 
-	// 尝试获取真实价格
+	// 只尝试获取真实价格，失败则直接返回错误
 	price, err := ds.fetchRealCurrentPrice(symbol)
 	if err != nil {
-		log.Printf("获取真实价格失败 %s: %v，使用模拟价格", symbol, err)
-		price = ds.generateMockCurrentPrice(symbol)
+		return 0, fmt.Errorf("获取真实价格失败: %v", err)
 	}
 
 	// 缓存价格
@@ -435,14 +436,7 @@ func (ds *DataService) fetchRealCurrentPrice(symbol string) (float64, error) {
 	return stockData.Close, nil
 }
 
-// generateMockCurrentPrice 生成模拟当前价格
-func (ds *DataService) generateMockCurrentPrice(symbol string) float64 {
-	basePrice := ds.getBasePrice(symbol)
-	// 添加随机波动
-	changePercent := rand.Float64()*0.2 - 0.1 // ±10%的波动
-	price := basePrice * (1 + changePercent)
-	return math.Round(price*100) / 100
-}
+// 删除了generateMockCurrentPrice函数 - 不再使用模拟价格
 
 // CalculateTechnicalIndicators 计算技术指标
 func (ds *DataService) CalculateTechnicalIndicators(data []model.StockData) model.TechnicalIndicators {
@@ -558,47 +552,189 @@ func (ds *DataService) calculateTrend(data []model.StockData) float64 {
 
 // PredictPriceAndConfidence 预测价格和置信度
 func (ds *DataService) PredictPriceAndConfidence(currentPrice float64, indicators model.TechnicalIndicators) (float64, float64) {
-	// 基于技术指标的简单预测逻辑
-	prediction := currentPrice
-	confidence := 50.0
-
-	// RSI 超买超卖信号
-	if indicators.RSI < 30 {
-		prediction *= 1.02 // 超卖，看涨
-		confidence += 10
-	} else if indicators.RSI > 70 {
-		prediction *= 0.98 // 超买，看跌
-		confidence += 10
-	}
-
-	// 移动平均线信号
-	if indicators.MA5 > indicators.MA20 {
-		prediction *= 1.01 // 短期均线在上，看涨
-		confidence += 5
-	} else {
-		prediction *= 0.99 // 短期均线在下，看跌
-		confidence += 5
-	}
-
-	// 趋势信号
-	if indicators.Trend > 0 {
-		prediction *= 1.005
-		confidence += 5
-	} else {
-		prediction *= 0.995
-		confidence += 5
-	}
-
-	// 限制置信度范围
-	if confidence > 95 {
-		confidence = 95
-	}
-	if confidence < 30 {
-		confidence = 30
-	}
-
-	return math.Round(prediction*100) / 100, math.Round(confidence*100) / 100
+	return ds.PredictPriceAndConfidenceWithHistory(currentPrice, indicators, nil)
 }
+
+// PredictPriceAndConfidenceWithHistory 预测价格和置信度（包含历史数据）
+func (ds *DataService) PredictPriceAndConfidenceWithHistory(currentPrice float64, indicators model.TechnicalIndicators, historicalData []model.StockData) (float64, float64) {
+	// 只使用DeepSeek AI预测，失败则直接返回错误
+	aiPrice, aiConfidence, err := ds.predictWithDeepSeek(currentPrice, indicators, historicalData)
+	if err != nil {
+		return 0, 0 // 返回错误的标志值
+	}
+
+	log.Printf("DeepSeek AI预测成功: 价格=%.2f, 置信度=%.2f", aiPrice, aiConfidence)
+	return aiPrice, aiConfidence
+}
+
+// predictWithDeepSeek 使用DeepSeek AI进行股价预测
+func (ds *DataService) predictWithDeepSeek(currentPrice float64, indicators model.TechnicalIndicators, historicalData []model.StockData) (float64, float64, error) {
+	// 构建专业的金融分析提示词
+	prompt := ds.buildAnalysisPrompt(currentPrice, indicators, historicalData)
+
+	// 构建请求
+	request := DeepSeekRequest{
+		Model: "deepseek-chat",
+		Messages: []DeepSeekMessage{
+			{
+				Role:    "system",
+				Content: "你是一个专业的股票分析师和量化交易专家，具有丰富的中国股市经验和深度的技术分析能力。你需要基于提供的技术指标和市场数据，给出专业的价格预测。请以JSON格式返回结果，包含预测价格和置信度。",
+			},
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+		MaxTokens:   1000,
+		Temperature: 0.3, // 较低的随机性，更稳定的结果
+		Stream:      false,
+	}
+
+	// 创建带超时的Context
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// 发送请求到DeepSeek API
+	resp, err := ds.httpClient.R().
+		SetContext(ctx).
+		SetHeader("Authorization", "Bearer "+ds.deepSeekKey).
+		SetHeader("Content-Type", "application/json").
+		SetBody(request).
+		Post(ds.deepSeekURL)
+
+	if err != nil {
+		return 0, 0, fmt.Errorf("请求DeepSeek API失败: %v", err)
+	}
+
+	if resp.StatusCode() != 200 {
+		return 0, 0, fmt.Errorf("DeepSeek API返回错误: %d, 响应: %s", resp.StatusCode(), resp.String())
+	}
+
+	// 解析响应
+	var deepSeekResp DeepSeekResponse
+	if err := json.Unmarshal(resp.Body(), &deepSeekResp); err != nil {
+		return 0, 0, fmt.Errorf("解析DeepSeek响应失败: %v", err)
+	}
+
+	if len(deepSeekResp.Choices) == 0 {
+		return 0, 0, fmt.Errorf("DeepSeek响应中没有选择项")
+	}
+
+	// 解析AI的预测结果
+	result, err := ds.parseAIPrediction(deepSeekResp.Choices[0].Message.Content)
+	if err != nil {
+		return 0, 0, fmt.Errorf("解析AI预测结果失败: %v", err)
+	}
+
+	log.Printf("DeepSeek AI预测结果: %+v", result)
+	return result.PredictedPrice, result.Confidence, nil
+}
+
+// buildAnalysisPrompt 构建分析提示词
+func (ds *DataService) buildAnalysisPrompt(currentPrice float64, indicators model.TechnicalIndicators, historicalData []model.StockData) string {
+	// 历史数据简要
+	historyInfo := ""
+	if historicalData != nil && len(historicalData) > 0 {
+		recentDays := len(historicalData)
+		if recentDays > 10 {
+			recentDays = 10 // 只取最近10天数据
+		}
+		historyInfo = fmt.Sprintf("最近%d天的价格走势:", recentDays)
+		for i := len(historicalData) - recentDays; i < len(historicalData); i++ {
+			data := historicalData[i]
+			historyInfo += fmt.Sprintf("\n- %s: 开盘%.2f, 最高%.2f, 最低%.2f, 收盘%.2f",
+				data.Date.Format("01-02"), data.Open, data.High, data.Low, data.Close)
+		}
+		historyInfo += "\n\n"
+	}
+
+	prompt := fmt.Sprintf(`作为一名专业的股票分析师，请你基于以下数据对中国股票指数进行明日价格预测：
+
+**当前价格**: %.2f
+
+**技术指标**:
+- 5日移动平均线(MA5): %.2f
+- 20日移动平均线(MA20): %.2f
+- 相对强弱指数(RSI): %.2f
+- 波动率(Volatility): %.2f%%
+- 趋势指标(Trend): %.2f%%
+
+%s**分析要求**:
+1. 请综合考虑技术指标的信号意义
+2. MA5与MA20的位置关系反映短期趋势
+3. RSI数值判断超买超卖情况（<30超卖，>70超买）
+4. 波动率反映市场风险程度
+5. 趋势指标显示整体方向
+
+**输出格式**:
+请以下列JSON格式返回预测结果：
+{
+  "predicted_price": 明日预测价格(数值),
+  "confidence": 置信度(0-100之间的数值),
+  "reasoning": "预测理由和分析过程"
+}
+
+注意：预测价格应该在当前价格的±5%%范围内，置信度基于技术指标的一致性评定。`,
+		currentPrice,
+		indicators.MA5,
+		indicators.MA20,
+		indicators.RSI,
+		indicators.Volatility,
+		indicators.Trend,
+		historyInfo)
+
+	return prompt
+}
+
+// parseAIPrediction 解析AI预测结果
+func (ds *DataService) parseAIPrediction(content string) (*PredictionResult, error) {
+	// 尝试直接解析JSON
+	var result PredictionResult
+	if err := json.Unmarshal([]byte(content), &result); err == nil {
+		// 验证结果合理性
+		if result.PredictedPrice > 0 && result.Confidence >= 0 && result.Confidence <= 100 {
+			return &result, nil
+		}
+	}
+
+	// 如果JSON解析失败，尝试提取JSON块
+	start := strings.Index(content, "{")
+	end := strings.LastIndex(content, "}")
+	if start != -1 && end != -1 && end > start {
+		jsonStr := content[start : end+1]
+		if err := json.Unmarshal([]byte(jsonStr), &result); err == nil {
+			if result.PredictedPrice > 0 && result.Confidence >= 0 && result.Confidence <= 100 {
+				return &result, nil
+			}
+		}
+	}
+
+	// 如果都失败，尝试从文本中提取数字
+	priceMatches := strings.Split(content, "predicted_price")
+	confidenceMatches := strings.Split(content, "confidence")
+
+	if len(priceMatches) > 1 && len(confidenceMatches) > 1 {
+		// 简单提取数字
+		priceStr := strings.Fields(strings.Split(priceMatches[1], ",")[0])[0]
+		priceStr = strings.Trim(priceStr, ":,\" ")
+		confidenceStr := strings.Fields(strings.Split(confidenceMatches[1], ",")[0])[0]
+		confidenceStr = strings.Trim(confidenceStr, ":,\" ")
+
+		if price, err := strconv.ParseFloat(priceStr, 64); err == nil {
+			if confidence, err := strconv.ParseFloat(confidenceStr, 64); err == nil {
+				return &PredictionResult{
+					PredictedPrice: price,
+					Confidence:     confidence,
+					Reasoning:      "从文本中提取的预测结果",
+				}, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("无法解析AI预测结果: %s", content)
+}
+
+// 删除了fallbackPredict函数 - 不再使用传统预测算法
 
 // GetPredictionData 获取预测数据
 func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, error) {
@@ -612,14 +748,14 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 	historicalData, err := ds.GetStockData(index.Symbol, "1mo")
 	if err != nil {
 		log.Printf("获取历史数据失败 %s: %v", index.Symbol, err)
-		return nil, err
+		return nil, fmt.Errorf("获取历史数据失败: %v", err)
 	}
 
-	// 获取完整的当前数据（包含昨收价）
+	// 获取当前数据
 	currentStockData, err := ds.GetCurrentStockData(index.Symbol)
 	if err != nil {
 		log.Printf("获取当前股票数据失败 %s: %v", index.Symbol, err)
-		return nil, err
+		return nil, fmt.Errorf("获取当前数据失败: %v", err)
 	}
 
 	currentPrice := currentStockData.Close
@@ -627,8 +763,11 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 	// 计算技术指标
 	indicators := ds.CalculateTechnicalIndicators(historicalData)
 
-	// 预测价格和置信度
-	predictedPrice, confidence := ds.PredictPriceAndConfidence(currentPrice, indicators)
+	// 预测价格和置信度（传入历史数据）
+	predictedPrice, confidence := ds.PredictPriceAndConfidenceWithHistory(currentPrice, indicators, historicalData)
+	if predictedPrice == 0 && confidence == 0 {
+		return nil, fmt.Errorf("DeepSeek AI预测失败")
+	}
 
 	// 计算预测涨跌幅（预测价格相对于当前价格的变化）
 	predictedChange := predictedPrice - currentPrice
