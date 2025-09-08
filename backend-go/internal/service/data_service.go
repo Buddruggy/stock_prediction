@@ -391,9 +391,19 @@ func (ds *DataService) GetCurrentPrice(symbol string) (float64, error) {
 
 // fetchRealCurrentPrice 获取真实当前价格
 func (ds *DataService) fetchRealCurrentPrice(symbol string) (float64, error) {
-	// 这里可以集成真实的数据源
-	// 目前返回错误，触发模拟价格生成
-	return 0, fmt.Errorf("数据源暂时不可用")
+	// 转换为腾讯财经的股票代码格式
+	tencentSymbol := ds.convertToTencentSymbol(symbol)
+	if tencentSymbol == "" {
+		return 0, fmt.Errorf("不支持的股票代码: %s", symbol)
+	}
+
+	// 获取腾讯财经实时数据
+	stockData, err := ds.fetchTencentCurrentData(tencentSymbol)
+	if err != nil {
+		return 0, fmt.Errorf("获取腾讯财经数据失败: %v", err)
+	}
+
+	return stockData.Close, nil
 }
 
 // generateMockCurrentPrice 生成模拟当前价格
