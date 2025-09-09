@@ -221,26 +221,26 @@ onMounted(() => {
 // 英雄区域
 .hero-section {
   text-align: center;
-  margin-bottom: var(--claude-space-3xl);
-  padding: var(--claude-space-2xl) 0;
+  margin-bottom: var(--claude-space-xl); /* 缩小间距 */
+  padding: var(--claude-space-lg) 0; /* 缩小内边距 */
   
   .hero-title {
-    font-size: 3.5rem;
+    font-size: 2.5rem; /* 缩小标题字体 */
     font-weight: 700;
     background: linear-gradient(135deg, var(--claude-primary), var(--claude-primary-light));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: var(--claude-space-lg);
+    margin-bottom: var(--claude-space);
     letter-spacing: -0.04em;
     line-height: 1.1;
     
     @media (max-width: 768px) {
-      font-size: 2.75rem;
+      font-size: 2rem;
     }
     
     @media (max-width: 480px) {
-      font-size: 2.25rem;
+      font-size: 1.6rem;
     }
   }
 }
@@ -250,11 +250,11 @@ onMounted(() => {
   .predictions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: var(--claude-space-xl);
+    gap: var(--claude-space-lg); /* 缩小网格间距 */
     
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
-      gap: var(--claude-space-lg);
+      gap: var(--claude-space);
     }
   }
 }
@@ -262,7 +262,7 @@ onMounted(() => {
 // 预测卡片
 .prediction-card {
   @include claude-card;
-  padding: var(--claude-space-2xl);
+  padding: var(--claude-space-xl); /* 缩小卡片内边距 */
   transition: var(--claude-transition);
   animation: claude-fade-in 0.6s ease-out;
   position: relative;
@@ -281,7 +281,7 @@ onMounted(() => {
   }
   
   &:hover {
-    transform: translateY(-6px);
+    transform: translateY(-4px); /* 缩小悬停位移 */
     box-shadow: var(--claude-shadow-lg);
     
     &::before {
@@ -299,7 +299,7 @@ onMounted(() => {
   }
   
   @media (max-width: 480px) {
-    padding: var(--claude-space-xl);
+    padding: var(--claude-space-lg);
   }
 }
 
@@ -307,7 +307,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--claude-space-xl);
+  margin-bottom: var(--claude-space-lg); /* 缩小间距 */
   
   .index-info {
     flex: 1;
@@ -370,22 +370,22 @@ onMounted(() => {
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--claude-space-lg);
+  gap: var(--claude-space); /* 缩小内部间距 */
 }
 
 .price-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--claude-space-lg);
+  gap: var(--claude-space); /* 缩小间距 */
   
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
-    gap: var(--claude-space);
+    gap: var(--claude-space-sm);
   }
   
   .price-item {
     text-align: center;
-    padding: var(--claude-space-lg);
+    padding: var(--claude-space); /* 缩小内边距 */
     background: var(--claude-bg-tertiary);
     border-radius: var(--claude-radius-lg);
     
@@ -393,7 +393,7 @@ onMounted(() => {
       display: block;
       font-size: 0.9rem;
       color: var(--claude-text-secondary);
-      margin-bottom: var(--claude-space-sm);
+      margin-bottom: var(--claude-space-xs); /* 缩小间距 */
       font-weight: 500;
     }
     
@@ -508,16 +508,16 @@ onMounted(() => {
 .status-section {
   display: flex;
   justify-content: center;
-  margin: var(--claude-space-3xl) auto;
+  margin: var(--claude-space-xl) auto; /* 缩小间距 */
   
   .status-card {
     @include claude-card;
     text-align: center;
-    padding: var(--claude-space-3xl);
+    padding: var(--claude-space-xl); /* 缩小内边距 */
     max-width: 500px;
     
     @media (max-width: 480px) {
-      padding: var(--claude-space-2xl);
+      padding: var(--claude-space-lg);
     }
   }
   

@@ -108,18 +108,19 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.25rem 0;
-    min-height: 35px;
+    padding: 0.4rem 0; /* 适度增加内边距 */
+    min-height: 40px; /* 适度增加高度 */
     
     @media (max-width: 768px) {
-      flex-direction: row; /* 移动端保持水平布局 */
+      flex-direction: row;
       gap: var(--claude-space-sm);
-      padding: 0.2rem 0;
-      min-height: 30px;
+      padding: 0.3rem 0;
+      min-height: 36px;
     }
     
     @media (max-width: 480px) {
-      min-height: 28px;
+      min-height: 32px;
+      padding: 0.25rem 0;
     }
   }
   
@@ -264,18 +265,18 @@ body {
   
   .main-nav {
     display: flex;
-    gap: var(--claude-space-sm);
+    gap: var(--claude-space); /* 增加按钮间间距 */
     
     @media (max-width: 768px) {
-      gap: var(--claude-space-xs);
+      gap: var(--claude-space-sm);
     }
   }
   
   .nav-link {
     @include claude-button-secondary;
     text-decoration: none;
-    padding: 0.25rem 0.5rem; /* 缩小按钮内边距 */
-    font-size: 0.8rem; /* 缩小字体 */
+    padding: 0.3rem 0.6rem; /* 适度增加内边距 */
+    font-size: 0.8rem;
     font-weight: 500;
     transition: var(--claude-transition);
     
@@ -288,27 +289,27 @@ body {
     
     &.router-link-active {
       @include claude-button-primary;
-      padding: 0.25rem 0.5rem; /* 覆盖默认的大内边距 */
-      font-size: 0.8rem; /* 保持一致的字体大小 */
+      padding: 0.3rem 0.6rem; /* 覆盖默认的大内边距 */
+      font-size: 0.8rem;
       
       @media (max-width: 768px) {
-        padding: 0.2rem 0.4rem;
+        padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
       }
       
       @media (max-width: 480px) {
-        padding: 0.15rem 0.35rem;
+        padding: 0.2rem 0.4rem;
         font-size: 0.7rem;
       }
     }
     
     @media (max-width: 768px) {
-      padding: 0.2rem 0.4rem;
+      padding: 0.25rem 0.5rem;
       font-size: 0.75rem;
     }
     
     @media (max-width: 480px) {
-      padding: 0.15rem 0.35rem;
+      padding: 0.2rem 0.4rem;
       font-size: 0.7rem;
     }
   }
@@ -317,15 +318,15 @@ body {
 // Claude 风格主体内容
 .claude-main {
   flex: 1;
-  padding: var(--claude-space-lg) 0;
+  padding: var(--claude-space) 0; /* 缩小主体内容间距 */
   animation: claude-fade-in 0.6s ease-out;
   
   @media (max-width: 768px) {
-    padding: var(--claude-space-lg) 0;
+    padding: var(--claude-space-sm) 0;
   }
   
   @media (max-width: 480px) {
-    padding: var(--claude-space) 0;
+    padding: var(--claude-space-xs) 0;
   }
 }
 
@@ -338,10 +339,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--claude-space-lg) 0;
+    padding: var(--claude-space) 0; /* 缩小页脚间距 */
     
     @media (max-width: 768px) {
-      padding: var(--claude-space) 0;
+      padding: var(--claude-space-sm) 0;
     }
   }
   
@@ -391,14 +392,14 @@ body {
 .claude-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--claude-space-lg);
+  padding: 0 var(--claude-space); /* 缩小容器内边距 */
   
   @media (max-width: 768px) {
-    padding: 0 var(--claude-space);
+    padding: 0 var(--claude-space-sm);
   }
   
   @media (max-width: 480px) {
-    padding: 0 var(--claude-space-sm);
+    padding: 0 var(--claude-space-xs);
   }
 }
 
