@@ -9,6 +9,8 @@ services:
       MYSQL_DATABASE: stock_prediction
       MYSQL_USER: stock_user
       MYSQL_PASSWORD: stock_pass
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
       - "3306:3306"
     volumes:
@@ -40,6 +42,7 @@ services:
       - DB_NAME=stock_prediction
       - DB_CHARSET=utf8mb4
       - ENVIRONMENT=production
+      - TZ=UTC
     depends_on:
       mysql:
         condition: service_healthy

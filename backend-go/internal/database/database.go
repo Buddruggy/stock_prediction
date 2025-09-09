@@ -83,7 +83,7 @@ func (ds *DatabaseService) SavePrediction(prediction *model.StockIndex) error {
 	record := &model.PredictionRecord{
 		IndexCode:      prediction.Code,
 		IndexName:      prediction.Name,
-		PredictionDate: time.Now().Truncate(24 * time.Hour), // 只保留日期部分
+		PredictionDate: time.Now().UTC().Truncate(24 * time.Hour), // 使用UTC时区确保一致性
 		CurrentPrice:   prediction.Current,
 		PredictedPrice: prediction.Predicted,
 		Change:         prediction.Change,
@@ -132,7 +132,8 @@ func (ds *DatabaseService) GetLatestPrediction(indexCode string) (*model.Predict
 // GetTodayPrediction 获取今日预测记录
 func (ds *DatabaseService) GetTodayPrediction(indexCode string) (*model.PredictionRecord, error) {
 	var record model.PredictionRecord
-	today := time.Now().Truncate(24 * time.Hour)
+	// 使用UTC时区获取当前日期，确保与数据库时区一致
+	today := time.Now().UTC().Truncate(24 * time.Hour)
 
 	result := ds.db.Where("index_code = ? AND prediction_date = ?", indexCode, today).
 		First(&record)
@@ -144,13 +145,15 @@ func (ds *DatabaseService) GetTodayPrediction(indexCode string) (*model.Predicti
 		return nil, fmt.Errorf("查询今日预测记录失败 %s: %v", indexCode, result.Error)
 	}
 
+	log.Printf("📊 从数据库成功获取今日预测: %s (日期: %s)", indexCode, today.Format("2006-01-02"))
 	return &record, nil
 }
 
 // GetAllTodayPredictions 获取所有指数的今日预测记录
 func (ds *DatabaseService) GetAllTodayPredictions() (map[string]*model.PredictionRecord, error) {
 	var records []model.PredictionRecord
-	today := time.Now().Truncate(24 * time.Hour)
+	// 使用UTC时区获取当前日期，确保与数据库时区一致
+	today := time.Now().UTC().Truncate(24 * time.Hour)
 
 	result := ds.db.Where("prediction_date = ?", today).Find(&records)
 	if result.Error != nil {
@@ -160,6 +163,10 @@ func (ds *DatabaseService) GetAllTodayPredictions() (map[string]*model.Predictio
 	predictionMap := make(map[string]*model.PredictionRecord)
 	for i := range records {
 		predictionMap[records[i].IndexCode] = &records[i]
+	}
+
+	if len(predictionMap) > 0 {
+		log.Printf("📊 从数据库成功获取所有今日预测: %d 条记录 (日期: %s)", len(predictionMap), today.Format("2006-01-02"))
 	}
 
 	return predictionMap, nil
