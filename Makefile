@@ -75,6 +75,8 @@ help:
 	@echo "  shell     - 进入容器shell"
 	@echo "  ps        - 查看容器状态"
 	@echo "  clean     - 清理未使用的镜像"
+	@echo "  logs-db   - 查看MySQL日志"
+	@echo "  db-shell  - 进入MySQL容器"
 	@echo ""
 	@echo "$(YELLOW)测试相关:$(RESET)"
 	@echo "  test      - 运行测试"
@@ -494,3 +496,32 @@ info:
 	docker images $(BACKEND_IMAGE) --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedAt}}"
 	@echo "$(YELLOW)前端镜像:$(RESET)"
 	docker images $(FRONTEND_IMAGE) --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedAt}}"
+
+## 查看MySQL日志
+logs-db:
+	@echo "$(BLUE)📝 查看MySQL容器日志...$(RESET)"
+	docker logs -f zhitou-mysql
+
+## 进入MySQL容器
+db-shell:
+	@echo "$(BLUE)🐚 进入MySQL容器...$(RESET)"
+	docker exec -it zhitou-mysql mysql -u root -p123456 stock_prediction
+
+## Docker Compose相关命令
+compose-up:
+	@echo "$(GREEN)🚀 启动Docker Compose服务...$(RESET)"
+	docker-compose up -d
+	@echo "$(GREEN)✅ 服务已启动$(RESET)"
+
+compose-down:
+	@echo "$(YELLOW)🛑 停止Docker Compose服务...$(RESET)"
+	docker-compose down
+	@echo "$(GREEN)✅ 服务已停止$(RESET)"
+
+compose-logs:
+	@echo "$(BLUE)📝 查看Docker Compose日志...$(RESET)"
+	docker-compose logs -f
+
+compose-ps:
+	@echo "$(BLUE)📊 Docker Compose服务状态:$(RESET)"
+	docker-compose ps

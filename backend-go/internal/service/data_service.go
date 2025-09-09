@@ -7,6 +7,8 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"stock-prediction-backend/internal/config"
+	"stock-prediction-backend/internal/database"
 	"stock-prediction-backend/internal/model"
 	"strconv"
 	"strings"
@@ -77,6 +79,7 @@ type DataService struct {
 	dailyPredictions     map[string]*model.StockIndex // 每日预测缓存
 	dailyPredictionsTime time.Time                    // 预测生成时间
 	dailyMutex           sync.RWMutex
+	db                   *database.DatabaseService // 数据库服务
 }
 
 // StockIndices 股票指数配置
@@ -108,7 +111,18 @@ var StockIndices = map[string]model.StockIndex{
 }
 
 // NewDataService 创建数据服务实例
-func NewDataService() *DataService {
+func NewDataService(cfg *config.Config) *DataService {
+	// 初始化数据库服务
+	var dbService *database.DatabaseService
+	var err error
+
+	// 尝试初始化数据库，失败不影响系统运行
+	dbService, err = database.NewDatabaseService(cfg)
+	if err != nil {
+		log.Printf("⚠️ 数据库初始化失败，将使用缓存模式: %v", err)
+		dbService = nil // 确保为 nil
+	}
+
 	ds := &DataService{
 		cache: make(map[string]*CacheItem),
 		httpClient: resty.New().
@@ -119,15 +133,16 @@ func NewDataService() *DataService {
 		deepSeekURL:      "https://api.deepseek.com/chat/completions", // DeepSeek API URL
 		dailyPredictions: make(map[string]*model.StockIndex),
 		stopChan:         make(chan bool),
+		db:               dbService,
 	}
 
-	// 启动定时任务：每天凌晨2点执行预测
+	// 启动定时任务：每天下午3点10分执行预测（A股收盘后）
 	go ds.startDailyScheduler()
 
 	// 启动时检查是否需要立即执行预测
 	go ds.checkAndPerformInitialPrediction()
 
-	log.Printf("🔄 定时预测任务已启动，每天凌晨2点执行")
+	log.Printf("🔄 定时预测任务已启动，每天下午3点10分执行（A股收盘后）")
 	return ds
 }
 
@@ -135,13 +150,29 @@ func NewDataService() *DataService {
 func (ds *DataService) GetStockData(symbol string, period string) ([]model.StockData, error) {
 	cacheKey := fmt.Sprintf("%s_%s", symbol, period)
 
-	// 检查缓存
+	// 检查内存缓存
 	if cached, found := ds.getCache(cacheKey); found {
-		log.Printf("使用缓存数据: %s", symbol)
+		log.Printf("使用内存缓存数据: %s", symbol)
 		return cached.([]model.StockData), nil
 	}
 
-	// 只尝试获取真实数据，失败则直接返回错误
+	// 尝试从数据库获取历史数据
+	if ds.db != nil {
+		// 转换symbol为indexCode
+		indexCode := ds.convertSymbolToIndexCode(symbol)
+		if indexCode != "" {
+			// 根据周期确定天数
+			days := ds.getPeriodDays(period)
+			if dbData, err := ds.db.GetHistoricalData(indexCode, days); err == nil && len(dbData) > 0 {
+				log.Printf("📊 从数据库获取历史数据: %s, 数据量: %d", symbol, len(dbData))
+				// 缓存数据
+				ds.setCache(cacheKey, dbData, 5*time.Minute)
+				return dbData, nil
+			}
+		}
+	}
+
+	// 数据库中没有，尝试获取真实数据
 	data, err := ds.fetchRealData(symbol, period)
 	if err != nil {
 		return nil, fmt.Errorf("获取真实数据失败: %v", err)
@@ -153,8 +184,22 @@ func (ds *DataService) GetStockData(symbol string, period string) ([]model.Stock
 
 	// 缓存数据
 	ds.setCache(cacheKey, data, 5*time.Minute)
-	log.Printf("成功获取数据: %s, 数据量: %d", symbol, len(data))
 
+	// 尝试保存到数据库（异步）
+	if ds.db != nil {
+		indexCode := ds.convertSymbolToIndexCode(symbol)
+		if indexCode != "" {
+			if indexInfo, exists := StockIndices[indexCode]; exists {
+				go func() {
+					if err := ds.db.SaveHistoricalData(indexCode, indexInfo.Name, data); err != nil {
+						log.Printf("保存历史数据到数据库失败 %s: %v", indexCode, err)
+					}
+				}()
+			}
+		}
+	}
+
+	log.Printf("成功获取数据: %s, 数据量: %d", symbol, len(data))
 	return data, nil
 }
 
@@ -185,6 +230,36 @@ func (ds *DataService) convertToTencentSymbol(symbol string) string {
 		"000688.SS": "sh000688", // 科创50
 	}
 	return symbolMap[symbol]
+}
+
+// convertSymbolToIndexCode 将symbol转换为indexCode
+func (ds *DataService) convertSymbolToIndexCode(symbol string) string {
+	for code, index := range StockIndices {
+		if index.Symbol == symbol {
+			return code
+		}
+	}
+	return ""
+}
+
+// getPeriodDays 根据周期获取天数
+func (ds *DataService) getPeriodDays(period string) int {
+	switch period {
+	case "1d":
+		return 1
+	case "5d":
+		return 5
+	case "1mo":
+		return 30
+	case "3mo":
+		return 90
+	case "6mo":
+		return 180
+	case "1y":
+		return 365
+	default:
+		return 30 // 默认一个月
+	}
 }
 
 // fetchTencentKLineData 获取腾讯财经K线数据
@@ -754,7 +829,15 @@ func (ds *DataService) parseAIPrediction(content string) (*PredictionResult, err
 
 // GetPredictionData 获取预测数据
 func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, error) {
-	// 先尝试从日常预测缓存获取
+	// 优先从数据库获取今日预测数据
+	if ds.db != nil {
+		if record, err := ds.db.GetTodayPrediction(indexCode); err == nil && record != nil {
+			log.Printf("📊 从数据库获取今日预测: %s", indexCode)
+			return ds.db.ConvertPredictionToStockIndex(record), nil
+		}
+	}
+
+	// 数据库中没有，尝试从日常预测缓存获取
 	if dailyPredictions, predictTime, ok := ds.GetDailyPredictions(); ok {
 		if prediction, exists := dailyPredictions[indexCode]; exists {
 			log.Printf("📊 从日常预测缓存获取 %s (预测时间: %s)", indexCode, predictTime.Format("2006-01-02 15:04:05"))
@@ -762,21 +845,33 @@ func (ds *DataService) GetPredictionData(indexCode string) (*model.StockIndex, e
 		}
 	}
 
-	// 如果缓存中没有，则实时计算（作为回退机制）
-	log.Printf("⚠️ 日常预测缓存中未找到 %s，使用实时预测", indexCode)
+	// 都没有，则实时计算（作为回退机制）
+	log.Printf("⚠️ 数据库和缓存中未找到 %s，使用实时预测", indexCode)
 	return ds.generateSinglePrediction(indexCode)
 }
 
 // GetAllPredictions 获取所有预测数据
 func (ds *DataService) GetAllPredictions() (map[string]*model.StockIndex, error) {
-	// 先尝试从日常预测缓存获取
+	// 优先从数据库获取今日所有预测数据
+	if ds.db != nil {
+		if records, err := ds.db.GetAllTodayPredictions(); err == nil && len(records) > 0 {
+			log.Printf("📊 从数据库获取所有今日预测, 数量: %d", len(records))
+			result := make(map[string]*model.StockIndex)
+			for code, record := range records {
+				result[code] = ds.db.ConvertPredictionToStockIndex(record)
+			}
+			return result, nil
+		}
+	}
+
+	// 数据库中没有，尝试从日常预测缓存获取
 	if dailyPredictions, predictTime, ok := ds.GetDailyPredictions(); ok {
 		log.Printf("📊 从日常预测缓存获取所有指数 (预测时间: %s)", predictTime.Format("2006-01-02 15:04:05"))
 		return dailyPredictions, nil
 	}
 
-	// 如果缓存中没有，则逐个实时获取（作为回退机制）
-	log.Printf("⚠️ 日常预测缓存为空，使用实时预测")
+	// 都没有，则逐个实时获取（作为回退机制）
+	log.Printf("⚠️ 数据库和缓存为空，使用实时预测")
 	predictions := make(map[string]*model.StockIndex)
 
 	for code := range StockIndices {
@@ -971,13 +1066,13 @@ func (ds *DataService) checkAndPerformInitialPrediction() {
 // startDailyScheduler 启动每日定时调度器
 func (ds *DataService) startDailyScheduler() {
 	for {
-		// 计算下一次凌晨2点的时间
+		// 计算下一次下午3点10分的时间
 		now := time.Now()
-		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 2, 0, 0, 0, now.Location())
+		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 15, 10, 0, 0, now.Location())
 
-		// 如果当前时间在凌晨2点之前，则今天就执行
-		if now.Hour() < 2 {
-			nextRun = time.Date(now.Year(), now.Month(), now.Day(), 2, 0, 0, 0, now.Location())
+		// 如果当前时间在下午3点10分之前，则今天就执行
+		if now.Hour() < 15 || (now.Hour() == 15 && now.Minute() < 10) {
+			nextRun = time.Date(now.Year(), now.Month(), now.Day(), 15, 10, 0, 0, now.Location())
 		}
 
 		duration := nextRun.Sub(now)
@@ -1026,11 +1121,18 @@ func (ds *DataService) performDailyPrediction() {
 		log.Printf("✅ %s 预测成功: 当前=%.2f, 预测=%.2f, 置信度=%.1f%%",
 			indexCode, prediction.Current, prediction.Predicted, prediction.Confidence)
 
+		// 保存到数据库
+		if ds.db != nil {
+			if err := ds.db.SavePrediction(prediction); err != nil {
+				log.Printf("⚠️ 保存预测数据到数据库失败 %s: %v", indexCode, err)
+			}
+		}
+
 		// 防止请求过于频繁
 		time.Sleep(2 * time.Second)
 	}
 
-	// 更新缓存
+	// 更新内存缓存
 	ds.dailyMutex.Lock()
 	ds.dailyPredictions = newPredictions
 	ds.dailyPredictionsTime = time.Now()
@@ -1129,5 +1231,14 @@ func (ds *DataService) Stop() {
 	}
 	if ds.timer != nil {
 		ds.timer.Stop()
+	}
+
+	// 关闭数据库连接
+	if ds.db != nil {
+		if err := ds.db.Close(); err != nil {
+			log.Printf("⚠️ 关闭数据库连接失败: %v", err)
+		} else {
+			log.Printf("✅ 数据库连接已关闭")
+		}
 	}
 }

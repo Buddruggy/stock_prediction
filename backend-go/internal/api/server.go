@@ -22,7 +22,7 @@ type Server struct {
 func NewServer(cfg *config.Config) *Server {
 	server := &Server{
 		config:      cfg,
-		dataService: service.NewDataService(),
+		dataService: service.NewDataService(cfg),
 	}
 
 	server.setupRouter()

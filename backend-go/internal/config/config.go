@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ type Config struct {
 	LogLevel string
 	Cache    CacheConfig
 	API      APIConfig
+	Database DatabaseConfig
 }
 
 // CacheConfig 缓存配置
@@ -24,6 +26,16 @@ type CacheConfig struct {
 // APIConfig API配置
 type APIConfig struct {
 	Timeout time.Duration
+}
+
+// DatabaseConfig 数据库配置
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	Charset  string
 }
 
 // Load 加载配置
@@ -40,6 +52,14 @@ func Load() *Config {
 		},
 		API: APIConfig{
 			Timeout: getDurationEnv("API_TIMEOUT", 30*time.Second),
+		},
+		Database: DatabaseConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnv("DB_PORT", "3306"),
+			User:     getEnv("DB_USER", "root"),
+			Password: getEnv("DB_PASSWORD", "123456"),
+			DBName:   getEnv("DB_NAME", "stock_prediction"),
+			Charset:  getEnv("DB_CHARSET", "utf8mb4"),
 		},
 	}
 
@@ -72,4 +92,10 @@ func getIntEnv(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// GetDSN 获取数据库连接字符串
+func (db *DatabaseConfig) GetDSN() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local",
+		db.User, db.Password, db.Host, db.Port, db.DBName, db.Charset)
 }

@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: zhitou-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: stock_prediction
+      MYSQL_USER: stock_user
+      MYSQL_PASSWORD: stock_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - zhitou-network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      timeout: 20s
+      retries: 10
+
+  # 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: deployment/backend/Dockerfile
+    container_name: zhitou-prediction-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=stock_prediction
+      - DB_CHARSET=utf8mb4
+      - ENVIRONMENT=production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - zhitou-network
+    volumes:
+      - ./logs:/app/logs
+
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/frontend/Dockerfile
+    container_name: zhitou-prediction-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "9000:9000"
+    depends_on:
+      - backend
+    networks:
+      - zhitou-network
+
+networks:
+  zhitou-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
