@@ -10,7 +10,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 设置Go代理和模块配置（使用国内镜像源）
 ENV GOPROXY=https://goproxy.cn,direct
-ENV GOSUMDB=sum.golang.google.cn
+ENV GOSUMDB=off
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 ENV GOOS=linux

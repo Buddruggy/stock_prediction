@@ -26,6 +26,9 @@ FRONTEND_PROD_DOCKERFILE := deployment/frontend/Dockerfile.prod
 LEGACY_DOCKERFILE := deploy/docker/Dockerfile
 DOCKER_CONTEXT := .
 
+# Docker Compose 命令检测和兼容
+DOCKER_COMPOSE_CMD := $(shell if command -v "docker compose" >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker-compose"; fi)
+
 # 颜色输出
 GREEN := \033[32m
 YELLOW := \033[33m
@@ -402,9 +405,10 @@ test: build-backend
 ## 使用docker-compose部署
 deploy:
 	@echo "$(GREEN)🚀 使用docker-compose部署...$(RESET)"
-	docker compose down
-	docker compose build
-	docker compose up -d
+	@echo "$(YELLOW)使用命令: $(DOCKER_COMPOSE_CMD)$(RESET)"
+	$(DOCKER_COMPOSE_CMD) down
+	$(DOCKER_COMPOSE_CMD) build
+	$(DOCKER_COMPOSE_CMD) up -d
 	@echo "$(GREEN)✅ 部署完成$(RESET)"
 	@echo "$(BLUE)🌐 访问地址: http://localhost:$(BACKEND_PORT)$(RESET)"
 
@@ -510,18 +514,18 @@ db-shell:
 ## Docker Compose相关命令
 compose-up:
 	@echo "$(GREEN)🚀 启动Docker Compose服务...$(RESET)"
-	docker compose up -d
+	$(DOCKER_COMPOSE_CMD) up -d
 	@echo "$(GREEN)✅ 服务已启动$(RESET)"
 
 compose-down:
 	@echo "$(YELLOW)🛑 停止Docker Compose服务...$(RESET)"
-	docker compose down
+	$(DOCKER_COMPOSE_CMD) down
 	@echo "$(GREEN)✅ 服务已停止$(RESET)"
 
 compose-logs:
 	@echo "$(BLUE)📝 查看Docker Compose日志...$(RESET)"
-	docker compose logs -f
+	$(DOCKER_COMPOSE_CMD) logs -f
 
 compose-ps:
 	@echo "$(BLUE)📊 Docker Compose服务状态:$(RESET)"
-	docker compose ps
+	$(DOCKER_COMPOSE_CMD) ps
