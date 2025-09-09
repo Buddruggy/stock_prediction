@@ -83,7 +83,7 @@ help:
 	@echo "  health    - 健康检查"
 	@echo ""
 	@echo "$(YELLOW)部署相关:$(RESET)"
-	@echo "  deploy    - 部署到生产环境"
+	@echo "  deploy    - 部署到生产环境 (Docker Compose v2)"
 	@echo "  k8s       - 部署到Kubernetes"
 	@echo ""
 	@echo "$(GREEN)当前配置:$(RESET)"
@@ -402,9 +402,9 @@ test: build-backend
 ## 使用docker-compose部署
 deploy:
 	@echo "$(GREEN)🚀 使用docker-compose部署...$(RESET)"
-	docker-compose down
-	docker-compose build
-	docker-compose up -d
+	docker compose down
+	docker compose build
+	docker compose up -d
 	@echo "$(GREEN)✅ 部署完成$(RESET)"
 	@echo "$(BLUE)🌐 访问地址: http://localhost:$(BACKEND_PORT)$(RESET)"
 
@@ -510,18 +510,18 @@ db-shell:
 ## Docker Compose相关命令
 compose-up:
 	@echo "$(GREEN)🚀 启动Docker Compose服务...$(RESET)"
-	docker-compose up -d
+	docker compose up -d
 	@echo "$(GREEN)✅ 服务已启动$(RESET)"
 
 compose-down:
 	@echo "$(YELLOW)🛑 停止Docker Compose服务...$(RESET)"
-	docker-compose down
+	docker compose down
 	@echo "$(GREEN)✅ 服务已停止$(RESET)"
 
 compose-logs:
 	@echo "$(BLUE)📝 查看Docker Compose日志...$(RESET)"
-	docker-compose logs -f
+	docker compose logs -f
 
 compose-ps:
 	@echo "$(BLUE)📊 Docker Compose服务状态:$(RESET)"
-	docker-compose ps
+	docker compose ps
