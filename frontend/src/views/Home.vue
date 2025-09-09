@@ -1,9 +1,9 @@
 <template>
   <div class="home">
     <!-- 预测卡片 -->
-    <div class="cards-grid">
+    <div class="cards-grid" v-if="Object.keys(predictions).length > 0">
       <div 
-        v-for="(prediction, code) in displayData" 
+        v-for="(prediction, code) in predictions" 
         :key="code"
         class="card"
       >
@@ -24,7 +24,7 @@
           </div>
           
           <div class="price-item">
-            <span class="label">涨跌</span>
+            <span class="label">预测涨跌</span>
             <span 
               class="value change" 
               :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
@@ -44,68 +44,31 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="status loading">
       <div class="spinner"></div>
-      <span>正在获取数据...</span>
+      <span v-if="Object.keys(predictions).length === 0">正在获取预测数据...</span>
+      <span v-else>正在加载更多指数预测... ({{ Object.keys(predictions).length }}/4 已完成)</span>
     </div>
 
-    <!-- 使用mock数据提示 -->
-    <div v-if="usingMockData" class="status info">
-      <span>📊 当前显示模拟数据，实际数据加载中...</span>
+    <!-- 错误状态 -->
+    <div v-if="error && !loading" class="status error">
+      <span>⚠️ {{ error }}</span>
+      <button @click="fetchPredictions" class="retry-btn">重试</button>
+    </div>
+
+    <!-- 空数据状态 -->
+    <div v-if="!loading && !error && Object.keys(predictions).length === 0" class="status empty">
+      <span>📊 暂无预测数据</span>
+      <button @click="fetchPredictions" class="retry-btn">刷新</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
-
-// Mock数据
-const mockData = {
-  sh000001: {
-    name: '上证指数',
-    market: 'Shanghai',
-    current: 3142.56,
-    predicted: 3168.23,
-    change: 25.67,
-    changePercent: 0.82,
-    confidence: 78.5
-  },
-  sz399001: {
-    name: '深证成指',
-    market: 'Shenzhen',
-    current: 10234.78,
-    predicted: 10187.45,
-    change: -47.33,
-    changePercent: -0.46,
-    confidence: 72.3
-  },
-  sz399006: {
-    name: '创业板指',
-    market: 'ChiNext',
-    current: 2156.89,
-    predicted: 2178.12,
-    change: 21.23,
-    changePercent: 0.98,
-    confidence: 65.8
-  },
-  sh000688: {
-    name: '科创50',
-    market: 'STAR50',
-    current: 987.45,
-    predicted: 994.67,
-    change: 7.22,
-    changePercent: 0.73,
-    confidence: 69.2
-  }
-}
 
 const predictions = ref({})
 const loading = ref(false)
-const usingMockData = ref(false)
-
-// 显示的数据：优先使用真实数据，失败时使用mock数据
-const displayData = computed(() => {
-  return Object.keys(predictions.value).length > 0 ? predictions.value : mockData
-})
+const error = ref('')
 
 // 格式化涨跌显示
 const formatChange = (change, changePercent) => {
@@ -114,33 +77,73 @@ const formatChange = (change, changePercent) => {
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`
 }
 
+// 支持的指数列表
+const indices = [
+  { code: 'sh000001', name: '上证综指' },
+  { code: 'sz399001', name: '深证成指' },
+  { code: 'sz399006', name: '创业板指' },
+  { code: 'sh000688', name: '科创50' }
+]
+
 const fetchPredictions = async () => {
   loading.value = true
+  error.value = ''
+  predictions.value = {} // 清空之前的预测结果
   
-  try {
-    const response = await axios.get('/api/v1/predict/all', {
-      timeout: 5000 // 5秒超时
-    })
-    
-    if (response.data.code === 200) {
-      predictions.value = response.data.data
-      usingMockData.value = false
-    } else {
-      console.warn('API返回错误:', response.data.message)
-      usingMockData.value = true
+  let hasAnySuccess = false
+  let allErrors = []
+  
+  // 逐个获取每个指数的预测
+  for (const index of indices) {
+    try {
+      console.log(`正在获取 ${index.name}(${index.code}) 的预测数据...`)
+      
+      const response = await axios.get(`/api/v1/predict/${index.code}`, {
+        timeout: 60000 // 60秒超时，给单个指数预测足够时间
+      })
+      
+      if (response.data.code === 200) {
+        // 成功获取预测，立即更新UI
+        predictions.value[index.code] = response.data.data
+        hasAnySuccess = true
+        console.log(`${index.name} 预测获取成功`)
+      } else {
+        console.warn(`${index.name} 预测失败: ${response.data.message}`)
+        allErrors.push(`${index.name}: ${response.data.message}`)
+      }
+    } catch (err) {
+      let errorMsg = ''
+      if (err.code === 'ECONNABORTED') {
+        errorMsg = '请求超时'
+      } else if (err.response) {
+        errorMsg = `服务器错误(${err.response.status}): ${err.response.data?.message || err.message}`
+      } else {
+        errorMsg = `网络错误: ${err.message}`
+      }
+      
+      console.warn(`${index.name} 预测失败: ${errorMsg}`)
+      allErrors.push(`${index.name}: ${errorMsg}`)
     }
-  } catch (err) {
-    console.warn('获取预测数据失败，使用模拟数据:', err.message)
-    usingMockData.value = true
-  } finally {
-    loading.value = false
+    
+    // 在每次请求之间稍作停顿，避免服务器压力过大
+    if (indices.indexOf(index) < indices.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
+  
+  // 处理最终结果
+  if (!hasAnySuccess) {
+    error.value = `所有指数预测失败:\n${allErrors.join('\n')}`
+  } else if (allErrors.length > 0) {
+    // 有部分成功，显示部分错误但不影响成功的结果
+    console.warn('部分指数预测失败:', allErrors)
+  }
+  
+  loading.value = false
 }
 
 onMounted(() => {
   fetchPredictions()
-  // 每30秒重试一次获取真实数据
-  setInterval(fetchPredictions, 30 * 1000)
 })
 </script>
 
@@ -293,7 +296,7 @@ onMounted(() => {
   gap: 0.75rem;
   padding: 1.5rem;
   margin: 2rem auto;
-  max-width: 400px;
+  max-width: 500px;
   border-radius: 8px;
   font-size: 0.9rem;
   
@@ -302,10 +305,20 @@ onMounted(() => {
     color: #6c757d;
   }
   
-  &.info {
-    background: #e7f3ff;
-    color: #0066cc;
-    border: 1px solid #b3d9ff;
+  &.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  &.empty {
+    background: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    flex-direction: column;
+    gap: 1rem;
   }
   
   @media (max-width: 768px) {
@@ -318,6 +331,26 @@ onMounted(() => {
     margin: 1rem auto;
     padding: 1rem;
     font-size: 0.8rem;
+  }
+}
+
+// 重试按钮
+.retry-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background: #1d4ed8;
+  }
+  
+  &:active {
+    background: #1e40af;
   }
 }
 

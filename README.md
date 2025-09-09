@@ -6,7 +6,7 @@
   **基于人工智能的中国股票指数预测平台**
   
   [![Docker](https://img.shields.io/badge/Docker-支持-blue?logo=docker)](https://www.docker.com/)
-  [![Python](https://img.shields.io/badge/Python-3.8+-green?logo=python)](https://www.python.org/)
+  [![Go](https://img.shields.io/badge/Go-1.21+-blue?logo=go)](https://golang.org/)
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
   [![AI](https://img.shields.io/badge/AI-机器学习-red?logo=tensorflow)](https://tensorflow.org/)
 </div>
@@ -47,69 +47,82 @@ git clone <项目地址>
 cd stock_prediction
 
 # 2. 一键启动 (推荐)
-./scripts/docker-run.sh
+make up
 
 # 3. 访问网站
-# http://localhost:9000
+# http://localhost:80 (前端)
+# http://localhost:8000 (后端API)
 ```
 
 ### 方式二: 本地开发环境
 
-**环境要求**: Python 3.8+ 和现代浏览器
+**环境要求**: Go 1.21+ 和现代浏览器
 
 ```bash
 # 1. 克隆项目
 git clone <项目地址>
 cd stock_prediction
 
-# 2. 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或 venv\\Scripts\\activate  # Windows
+# 2. 安装依赖
+make install-deps
 
-# 3. 安装依赖
-pip install -r requirements.txt
+# 3. 启动开发服务器
+make dev
 
-# 4. 启动服务器
-python app.py
-
-# 5. 访问网站
-# http://localhost:9000
+# 4. 访问网站
+# http://localhost:9000 (前端)
+# http://localhost:8000 (后端API)
 ```
 
 ## 📁 项目结构
 
 ```
 stock_prediction/
-├── app.py              # Flask后端服务器
-├── index.html          # 前端主页面
-├── styles.css          # 样式文件
-├── script.js           # JavaScript交互逻辑
-├── requirements.txt    # Python依赖
-└── README.md          # 项目说明
+├── backend-go/           # Go后端服务
+│   ├── cmd/main.go      # 主程序入口
+│   ├── internal/        # 内部包
+│   │   ├── api/        # API路由
+│   │   ├── config/     # 配置管理
+│   │   ├── model/      # 数据模型
+│   │   └── service/    # 业务逻辑
+│   ├── pkg/            # 公共包
+│   │   ├── logger/     # 日志
+│   │   └── utils/      # 工具函数
+│   └── go.mod          # Go模块依赖
+├── frontend/           # Vue.js前端
+│   ├── src/           # 源代码
+│   ├── public/        # 静态资源
+│   └── package.json   # Node.js依赖
+├── deployment/        # 部署配置
+│   ├── backend/       # 后端Dockerfile
+│   └── frontend/      # 前端Dockerfile
+├── deploy/           # 部署脚本
+│   ├── docker/       # Docker配置
+│   └── k8s/          # Kubernetes配置
+└── Makefile          # 构建脚本
 ```
 
 ## 🔧 API 接口
 
 ### 获取支持的指数列表
 ```http
-GET /api/indices
+GET /api/v1/indices
 ```
 
 ### 预测指定指数
 ```http
-GET /api/predict/<index_code>
+GET /api/v1/predict/{index_code}
 ```
 参数: `index_code` - 指数代码 (sh000001, sz399001, sz399006, sh000688)
 
 ### 预测所有指数
 ```http
-GET /api/predict/all
+GET /api/v1/predict/all
 ```
 
 ### 获取历史数据
 ```http
-GET /api/history/<index_code>?period=1mo
+GET /api/v1/history/{index_code}?period=1mo
 ```
 参数: 
 - `index_code` - 指数代码
@@ -117,7 +130,7 @@ GET /api/history/<index_code>?period=1mo
 
 ### 获取服务状态
 ```http
-GET /api/status
+GET /api/v1/health
 ```
 
 ## 📊 预测模型说明
@@ -160,13 +173,14 @@ GET /api/status
 
 ## ⚙️ 配置选项
 
-### 数据缓存
-- 默认缓存时间: 5分钟
-- 可在 `app.py` 中修改 `cache_duration` 参数
+### 环境变量
+- `ENVIRONMENT`: 运行环境 (development/production)
+- `PORT`: 服务端口 (默认: 8000)
+- `LOG_LEVEL`: 日志级别 (debug/info/warn/error)
 
 ### 预测参数
-- 历史数据窗口: 30天 (可在 `prepare_features` 函数中调整)
-- 模型训练比例: 80% (可在 `ml_predict` 函数中调整)
+- 历史数据窗口: 30天 (可在配置中调整)
+- 模型训练比例: 80% (可在配置中调整)
 
 ## 🚨 注意事项
 
@@ -182,13 +196,20 @@ GET /api/status
 
 ## 🔄 更新日志
 
-### v1.0.0 (2024-01-01)
-- ✨ 初始版本发布
+### v2.0.0 (2024-01-01)
+- ✨ 重构为Go后端 + Vue.js前端架构
 - 🎯 支持4个主要中国股票指数预测
 - 🤖 集成机器学习预测模型
 - 💻 现代化响应式界面
 - 📊 实时数据获取和展示
 - 📱 移动端适配
+- 🐳 Docker容器化部署
+- ☸️ Kubernetes支持
+
+### v1.0.0 (2023-12-01)
+- ✨ 初始版本发布 (Python Flask)
+- 🎯 基础预测功能
+- 💻 简单Web界面
 
 ## 🤝 贡献指南
 
@@ -202,7 +223,7 @@ GET /api/status
 5. 提交 Pull Request
 
 ### 代码规范
-- Python代码遵循 PEP 8 规范
+- Go代码遵循官方代码规范
 - JavaScript代码使用 ES6+ 语法
 - CSS使用BEM命名规范
 - 提交信息使用约定式提交格式

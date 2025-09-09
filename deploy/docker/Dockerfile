@@ -1,50 +1,51 @@
-# 智投预测 - AI股市指数预测平台 Docker镜像
-FROM python:3.11-slim
+# 智投预测 - AI股市指数预测平台 Docker镜像 (Go后端)
+FROM golang:1.21-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
-# 设置环境变量
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+# 安装必要的包
+RUN apk add --no-cache git
 
-# 使用国内镜像源加速包安装（可选）
-RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+# 设置Go代理和模块配置
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=sum.golang.google.cn
+ENV GO111MODULE=on
 
-# 安装系统依赖 - 优化版本
-RUN apt-get update --fix-missing && \
-    apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* \
-    && rm -rf /var/tmp/*
+# 复制 go mod 文件
+COPY backend-go/go.mod backend-go/go.sum ./
 
-# 复制requirements文件
-COPY backend/requirements.txt .
+# 下载依赖（增加超时时间和重试）
+RUN go mod download -x
 
-# 安装Python依赖 - 使用国内镜像源加速
-RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple/ && \
-    pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+# 复制源代码
+COPY backend-go/ .
 
-# 复制应用代码
-COPY backend/ ./backend/
+# 构建应用
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
+
+# 运行阶段
+FROM alpine:latest
+
+# 安装 ca-certificates 和 curl
+RUN apk --no-cache add ca-certificates curl
+
+# 设置工作目录
+WORKDIR /root/
+
+# 从构建阶段复制二进制文件
+COPY --from=builder /app/main .
 
 # 创建非root用户
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
+RUN adduser -D -s /bin/sh app && chown -R app:app /root
 USER app
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9001/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
 # 暴露端口
-EXPOSE 9001
+EXPOSE 8000
 
-# 启动命令 - 使用FastAPI
-WORKDIR /app/backend
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9001"]
+# 运行应用
+CMD ["./main"]
