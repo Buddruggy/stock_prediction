@@ -26,8 +26,11 @@ FRONTEND_PROD_DOCKERFILE := deployment/frontend/Dockerfile.prod
 LEGACY_DOCKERFILE := deploy/docker/Dockerfile
 DOCKER_CONTEXT := .
 
-# Docker Compose 命令检测和兼容
-DOCKER_COMPOSE_CMD := $(shell if command -v "docker compose" >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker-compose"; fi)
+# Docker Compose 命令配置
+# 新版本 Docker Compose v2 (服务器环境)
+DOCKER_COMPOSE_V2 := docker compose
+# 旧版本 docker-compose v1 (Mac 本地环境)
+DOCKER_COMPOSE_V1 := docker-compose
 
 # 颜色输出
 GREEN := \033[32m
@@ -81,12 +84,23 @@ help:
 	@echo "  logs-db   - 查看MySQL日志"
 	@echo "  db-shell  - 进入MySQL容器"
 	@echo ""
+	@echo "$(YELLOW)Docker Compose 命令:$(RESET)"
+	@echo "  compose-up        - 启动Docker Compose v2服务 (服务器)"
+	@echo "  compose-down      - 停止Docker Compose v2服务 (服务器)"
+	@echo "  compose-logs      - 查看Docker Compose v2日志 (服务器)"
+	@echo "  compose-ps        - 查看Docker Compose v2状态 (服务器)"
+	@echo "  compose-up-mac    - 启动docker-compose v1服务 (Mac)"
+	@echo "  compose-down-mac  - 停止docker-compose v1服务 (Mac)"
+	@echo "  compose-logs-mac  - 查看docker-compose v1日志 (Mac)"
+	@echo "  compose-ps-mac    - 查看docker-compose v1状态 (Mac)"
+	@echo ""
 	@echo "$(YELLOW)测试相关:$(RESET)"
 	@echo "  test      - 运行测试"
 	@echo "  health    - 健康检查"
 	@echo ""
 	@echo "$(YELLOW)部署相关:$(RESET)"
-	@echo "  deploy    - 部署到生产环境 (Docker Compose v2)"
+	@echo "  deploy         - 🚀 部署到生产环境 (Docker Compose v2 - 服务器)"
+	@echo "  deploy-mac     - 🚀 部署到本地环境 (docker-compose v1 - Mac)"
 	@echo "  k8s       - 部署到Kubernetes"
 	@echo ""
 	@echo "$(GREEN)当前配置:$(RESET)"
@@ -402,13 +416,23 @@ test: build-backend
 	@echo "$(BLUE)🧪 运行Go后端测试...$(RESET)"
 	cd backend-go && go test ./... || echo "$(YELLOW)⚠️ 测试失败$(RESET)"
 
-## 使用docker-compose部署
+## 使用Docker Compose v2部署 (服务器环境)
 deploy:
-	@echo "$(GREEN)🚀 使用docker-compose部署...$(RESET)"
-	@echo "$(YELLOW)使用命令: $(DOCKER_COMPOSE_CMD)$(RESET)"
-	$(DOCKER_COMPOSE_CMD) down
-	$(DOCKER_COMPOSE_CMD) build
-	$(DOCKER_COMPOSE_CMD) up -d
+	@echo "$(GREEN)🚀 使用Docker Compose v2部署...$(RESET)"
+	@echo "$(YELLOW)使用命令: $(DOCKER_COMPOSE_V2)$(RESET)"
+	$(DOCKER_COMPOSE_V2) down
+	$(DOCKER_COMPOSE_V2) build
+	$(DOCKER_COMPOSE_V2) up -d
+	@echo "$(GREEN)✅ 部署完成$(RESET)"
+	@echo "$(BLUE)🌐 访问地址: http://localhost:$(BACKEND_PORT)$(RESET)"
+
+## 使用docker-compose v1部署 (Mac本地环境)
+deploy-mac:
+	@echo "$(GREEN)🚀 使用docker-compose v1部署...$(RESET)"
+	@echo "$(YELLOW)使用命令: $(DOCKER_COMPOSE_V1)$(RESET)"
+	$(DOCKER_COMPOSE_V1) down
+	$(DOCKER_COMPOSE_V1) build
+	$(DOCKER_COMPOSE_V1) up -d
 	@echo "$(GREEN)✅ 部署完成$(RESET)"
 	@echo "$(BLUE)🌐 访问地址: http://localhost:$(BACKEND_PORT)$(RESET)"
 
@@ -511,21 +535,40 @@ db-shell:
 	@echo "$(BLUE)🐚 进入MySQL容器...$(RESET)"
 	docker exec -it zhitou-mysql mysql -u root -p123456 stock_prediction
 
-## Docker Compose相关命令
+## Docker Compose v2 相关命令 (服务器环境)
 compose-up:
-	@echo "$(GREEN)🚀 启动Docker Compose服务...$(RESET)"
-	$(DOCKER_COMPOSE_CMD) up -d
+	@echo "$(GREEN)🚀 启动Docker Compose v2服务...$(RESET)"
+	$(DOCKER_COMPOSE_V2) up -d
 	@echo "$(GREEN)✅ 服务已启动$(RESET)"
 
 compose-down:
-	@echo "$(YELLOW)🛑 停止Docker Compose服务...$(RESET)"
-	$(DOCKER_COMPOSE_CMD) down
+	@echo "$(YELLOW)🛑 停止Docker Compose v2服务...$(RESET)"
+	$(DOCKER_COMPOSE_V2) down
 	@echo "$(GREEN)✅ 服务已停止$(RESET)"
 
 compose-logs:
-	@echo "$(BLUE)📝 查看Docker Compose日志...$(RESET)"
-	$(DOCKER_COMPOSE_CMD) logs -f
+	@echo "$(BLUE)📝 查看Docker Compose v2日志...$(RESET)"
+	$(DOCKER_COMPOSE_V2) logs -f
 
 compose-ps:
-	@echo "$(BLUE)📊 Docker Compose服务状态:$(RESET)"
-	$(DOCKER_COMPOSE_CMD) ps
+	@echo "$(BLUE)📊 Docker Compose v2服务状态:$(RESET)"
+	$(DOCKER_COMPOSE_V2) ps
+
+## docker-compose v1 相关命令 (Mac本地环境)
+compose-up-mac:
+	@echo "$(GREEN)🚀 启动docker-compose v1服务...$(RESET)"
+	$(DOCKER_COMPOSE_V1) up -d
+	@echo "$(GREEN)✅ 服务已启动$(RESET)"
+
+compose-down-mac:
+	@echo "$(YELLOW)🛑 停止docker-compose v1服务...$(RESET)"
+	$(DOCKER_COMPOSE_V1) down
+	@echo "$(GREEN)✅ 服务已停止$(RESET)"
+
+compose-logs-mac:
+	@echo "$(BLUE)📝 查看docker-compose v1日志...$(RESET)"
+	$(DOCKER_COMPOSE_V1) logs -f
+
+compose-ps-mac:
+	@echo "$(BLUE)📊 docker-compose v1服务状态:$(RESET)"
+	$(DOCKER_COMPOSE_V1) ps
