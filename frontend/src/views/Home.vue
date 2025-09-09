@@ -1,63 +1,105 @@
 <template>
-  <div class="home">
-    <!-- 预测卡片 -->
-    <div class="cards-grid" v-if="Object.keys(predictions).length > 0">
-      <div 
-        v-for="(prediction, code) in predictions" 
-        :key="code"
-        class="card"
-      >
-        <div class="card-header">
-          <h3 class="index-name">{{ prediction.name }}</h3>
-          <span class="index-code">{{ code.toUpperCase() }}</span>
-        </div>
-        
-        <div class="card-content">
-          <div class="price-item">
-            <span class="label">当前</span>
-            <span class="value">{{ prediction.current?.toFixed(2) || '--' }}</span>
+  <div class="claude-home">
+    <!-- Claude 风格英雄区域 -->
+    <div class="hero-section">
+      <h2 class="hero-title">AI 驱动的智能股指预测</h2>
+    </div>
+
+    <!-- 预测卡片网格 -->
+    <div class="predictions-section" v-if="Object.keys(predictions).length > 0">
+      <div class="predictions-grid">
+        <div 
+          v-for="(prediction, code) in predictions" 
+          :key="code"
+          class="prediction-card"
+          :class="{ 'high-confidence': prediction.confidence > 80 }"
+        >
+          <!-- 卡片头部 -->
+          <div class="card-header">
+            <div class="index-info">
+              <h3 class="index-name">{{ prediction.name }}</h3>
+              <span class="index-code">{{ code.toUpperCase() }}</span>
+            </div>
+            <div class="trend-badge" :class="getTrendClass(prediction.change)">
+              <span class="trend-value">{{ getTrendText(prediction.change) }}</span>
+            </div>
           </div>
           
-          <div class="price-item">
-            <span class="label">预测</span>
-            <span class="value predicted">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
-          </div>
-          
-          <div class="price-item">
-            <span class="label">预测涨跌</span>
-            <span 
-              class="value change" 
-              :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
-            >
-              {{ formatChange(prediction.change, prediction.changePercent) }}
-            </span>
-          </div>
-          
-          <div class="price-item">
-            <span class="label">信心度</span>
-            <span class="value confidence">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
+          <!-- 卡片内容 -->
+          <div class="card-body">
+            <div class="price-section">
+              <div class="price-item current-price">
+                <span class="price-label">当前价格</span>
+                <span class="price-value">{{ prediction.current?.toFixed(2) || '--' }}</span>
+              </div>
+              
+              <div class="price-item predicted-price">
+                <span class="price-label">预测价格</span>
+                <span class="price-value">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
+              </div>
+            </div>
+            
+            <div class="change-section">
+              <div class="change-item">
+                <span class="change-label">预测涨跌</span>
+                <span 
+                  class="change-value" 
+                  :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
+                >
+                  {{ formatChange(prediction.change, prediction.changePercent) }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="confidence-section">
+              <div class="confidence-header">
+                <span class="confidence-label">预测置信度</span>
+                <span class="confidence-percentage">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
+              </div>
+              <div class="confidence-bar">
+                <div 
+                  class="confidence-fill" 
+                  :style="{ width: (prediction.confidence || 0) + '%' }"
+                  :class="getConfidenceClass(prediction.confidence)"
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="status loading">
-      <div class="spinner"></div>
-      <span v-if="Object.keys(predictions).length === 0">正在获取预测数据...</span>
-      <span v-else>正在加载更多指数预测... ({{ Object.keys(predictions).length }}/4 已完成)</span>
+    <div v-if="loading" class="status-section loading">
+      <div class="status-card">
+        <div class="loading-spinner"></div>
+        <div class="status-text">
+          <span v-if="Object.keys(predictions).length === 0">正在获取预测数据...</span>
+          <span v-else>正在加载更多指数... ({{ Object.keys(predictions).length }}/4)</span>
+        </div>
+      </div>
     </div>
 
     <!-- 错误状态 -->
-    <div v-if="error && !loading" class="status error">
-      <span>⚠️ {{ error }}</span>
-      <button @click="fetchPredictions" class="retry-btn">重试</button>
+    <div v-if="error && !loading" class="status-section error">
+      <div class="status-card">
+        <div class="error-icon">⚠️</div>
+        <div class="status-text">{{ error }}</div>
+        <button @click="fetchPredictions" class="retry-button">
+          重新加载
+        </button>
+      </div>
     </div>
 
     <!-- 空数据状态 -->
-    <div v-if="!loading && !error && Object.keys(predictions).length === 0" class="status empty">
-      <span>📊 暂无预测数据</span>
-      <button @click="fetchPredictions" class="retry-btn">刷新</button>
+    <div v-if="!loading && !error && Object.keys(predictions).length === 0" class="status-section empty">
+      <div class="status-card">
+        <div class="empty-icon">📊</div>
+        <div class="status-text">暂无预测数据</div>
+        <button @click="fetchPredictions" class="retry-button">
+          刷新数据
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -75,6 +117,27 @@ const formatChange = (change, changePercent) => {
   if (change === undefined || changePercent === undefined) return '--'
   const sign = change > 0 ? '+' : ''
   return `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`
+}
+
+// 获取趋势类名
+const getTrendClass = (change) => {
+  if (change > 0) return 'positive'
+  if (change < 0) return 'negative'
+  return 'neutral'
+}
+
+// 获取趋势文字
+const getTrendText = (change) => {
+  if (change > 0) return '看涨'
+  if (change < 0) return '看跌'
+  return '持平'
+}
+
+// 获取置信度类名
+const getConfidenceClass = (confidence) => {
+  if (confidence >= 80) return 'high'
+  if (confidence >= 60) return 'medium'
+  return 'low'
 }
 
 // 支持的指数列表
@@ -148,227 +211,362 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.home {
-  width: 100%;
+@use '../assets/styles/modern.scss' as *;
+
+.claude-home {
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
-
-// 卡片网格
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+// 英雄区域
+.hero-section {
+  text-align: center;
+  margin-bottom: var(--claude-space-3xl);
+  padding: var(--claude-space-2xl) 0;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    max-width: 400px;
-  }
-  
-  @media (max-width: 480px) {
-    gap: 0.75rem;
-    max-width: 100%;
+  .hero-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--claude-primary), var(--claude-primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--claude-space-lg);
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    
+    @media (max-width: 768px) {
+      font-size: 2.75rem;
+    }
+    
+    @media (max-width: 480px) {
+      font-size: 2.25rem;
+    }
   }
 }
 
-// 卡片样式 - 参考Claude官网风格
-.card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 1.5rem;
-  border: 1px solid #e5e7eb;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+// 预测区域
+.predictions-section {
+  .predictions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--claude-space-xl);
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: var(--claude-space-lg);
+    }
+  }
+}
+
+// 预测卡片
+.prediction-card {
+  @include claude-card;
+  padding: var(--claude-space-2xl);
+  transition: var(--claude-transition);
+  animation: claude-fade-in 0.6s ease-out;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--claude-primary), var(--claude-primary-light));
+    opacity: 0;
+    transition: var(--claude-transition);
+  }
   
   &:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-6px);
+    box-shadow: var(--claude-shadow-lg);
+    
+    &::before {
+      opacity: 1;
+    }
   }
   
-  @media (max-width: 768px) {
-    padding: 1.25rem;
+  &.high-confidence {
+    border-color: var(--claude-success);
+    
+    &::before {
+      background: linear-gradient(90deg, var(--claude-success), var(--claude-accent));
+      opacity: 1;
+    }
   }
   
   @media (max-width: 480px) {
-    padding: 1rem;
-    border-radius: 6px;
+    padding: var(--claude-space-xl);
   }
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f3f4f6;
+  align-items: flex-start;
+  margin-bottom: var(--claude-space-xl);
+  
+  .index-info {
+    flex: 1;
+  }
   
   .index-name {
-    font-size: 1.125rem;
+    font-size: 1.5rem;
     font-weight: 600;
-    color: #1a1a1a;
-    margin: 0;
-    letter-spacing: -0.025em;
+    color: var(--claude-text-primary);
+    margin: 0 0 var(--claude-space-sm) 0;
     
     @media (max-width: 480px) {
-      font-size: 1rem;
+      font-size: 1.25rem;
     }
   }
   
   .index-code {
-    font-size: 0.75rem;
-    color: #6b7280;
-    background: #f9fafb;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    display: inline-block;
+    background: var(--claude-bg-tertiary);
+    color: var(--claude-text-secondary);
+    padding: 0.375rem 0.875rem;
+    border-radius: var(--claude-radius-lg);
+    font-size: 0.8rem;
     font-weight: 500;
-    border: 1px solid #e5e7eb;
+    font-family: var(--claude-font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .trend-badge {
+    padding: 0.5rem 1rem;
+    border-radius: var(--claude-radius-xl);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    
+    &.positive {
+      background: rgba(5, 150, 105, 0.1);
+      color: var(--claude-success);
+    }
+    
+    &.negative {
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--claude-danger);
+    }
+    
+    &.neutral {
+      background: var(--claude-bg-tertiary);
+      color: var(--claude-text-tertiary);
+    }
     
     @media (max-width: 480px) {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
     }
   }
 }
 
-.card-content {
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--claude-space-lg);
+}
+
+.price-section {
   display: grid;
-  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--claude-space-lg);
   
   @media (max-width: 480px) {
-    gap: 0.5rem;
+    grid-template-columns: 1fr;
+    gap: var(--claude-space);
+  }
+  
+  .price-item {
+    text-align: center;
+    padding: var(--claude-space-lg);
+    background: var(--claude-bg-tertiary);
+    border-radius: var(--claude-radius-lg);
+    
+    .price-label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--claude-text-secondary);
+      margin-bottom: var(--claude-space-sm);
+      font-weight: 500;
+    }
+    
+    .price-value {
+      display: block;
+      font-size: 1.75rem;
+      font-weight: 600;
+      font-family: var(--claude-font-mono);
+      color: var(--claude-text-primary);
+      
+      @media (max-width: 480px) {
+        font-size: 1.5rem;
+      }
+    }
+    
+    &.predicted-price .price-value {
+      color: var(--claude-primary);
+    }
+    
+    @media (max-width: 480px) {
+      padding: var(--claude-space);
+    }
   }
 }
 
-.price-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
+.change-section {
+  text-align: center;
+  padding: var(--claude-space-lg);
+  background: var(--claude-bg-secondary);
+  border-radius: var(--claude-radius-lg);
   
-  .label {
-    font-size: 0.875rem;
-    color: #6b7280;
+  .change-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--claude-text-secondary);
+    margin-bottom: var(--claude-space-sm);
     font-weight: 500;
+  }
+  
+  .change-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-family: var(--claude-font-mono);
+    
+    &.positive {
+      color: var(--claude-success);
+    }
+    
+    &.negative {
+      color: var(--claude-danger);
+    }
     
     @media (max-width: 480px) {
-      font-size: 0.8rem;
+      font-size: 1.125rem;
     }
   }
   
-  .value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1a1a1a;
+  @media (max-width: 480px) {
+    padding: var(--claude-space);
+  }
+}
+
+.confidence-section {
+  .confidence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--claude-space);
     
-    &.predicted {
-      color: #2563eb;
+    .confidence-label {
+      font-size: 0.9rem;
+      color: var(--claude-text-secondary);
+      font-weight: 500;
     }
     
-    &.change {
-      &.positive {
-        color: #059669;
+    .confidence-percentage {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--claude-primary);
+      font-family: var(--claude-font-mono);
+    }
+  }
+  
+  .confidence-bar {
+    height: 12px;
+    background: var(--claude-bg-tertiary);
+    border-radius: var(--claude-radius);
+    overflow: hidden;
+    
+    .confidence-fill {
+      height: 100%;
+      border-radius: var(--claude-radius);
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      
+      &.high {
+        background: linear-gradient(90deg, var(--claude-success), #34d399);
       }
       
-      &.negative {
-        color: #dc2626;
+      &.medium {
+        background: linear-gradient(90deg, var(--claude-warning), #fbbf24);
       }
-    }
-    
-    &.confidence {
-      color: #d97706;
-    }
-    
-    @media (max-width: 480px) {
-      font-size: 0.9rem;
+      
+      &.low {
+        background: linear-gradient(90deg, var(--claude-danger), #f87171);
+      }
     }
   }
 }
 
-// 状态提示
-.status {
+// 状态组件
+.status-section {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  margin: 2rem auto;
-  max-width: 500px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  margin: var(--claude-space-3xl) auto;
+  
+  .status-card {
+    @include claude-card;
+    text-align: center;
+    padding: var(--claude-space-3xl);
+    max-width: 500px;
+    
+    @media (max-width: 480px) {
+      padding: var(--claude-space-2xl);
+    }
+  }
+  
+  .status-text {
+    font-size: 1rem;
+    color: var(--claude-text-secondary);
+    margin: var(--claude-space-lg) 0;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
   
   &.loading {
-    background: #f8f9fa;
-    color: #6c757d;
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--claude-bg-tertiary);
+      border-top: 3px solid var(--claude-primary);
+      border-radius: 50%;
+      margin: 0 auto var(--claude-space-lg);
+      animation: spin 1s linear infinite;
+    }
   }
   
   &.error {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-    flex-direction: column;
-    gap: 1rem;
+    .status-card {
+      border-left: 4px solid var(--claude-danger);
+    }
+    
+    .error-icon {
+      font-size: 3rem;
+      margin-bottom: var(--claude-space);
+    }
   }
   
   &.empty {
-    background: #f9fafb;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  @media (max-width: 768px) {
-    margin: 1.5rem auto;
-    padding: 1.25rem;
-    font-size: 0.85rem;
-  }
-  
-  @media (max-width: 480px) {
-    margin: 1rem auto;
-    padding: 1rem;
-    font-size: 0.8rem;
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: var(--claude-space);
+      opacity: 0.6;
+    }
   }
 }
 
-// 重试按钮
-.retry-btn {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  
-  &:hover {
-    background: #1d4ed8;
-  }
-  
-  &:active {
-    background: #1e40af;
-  }
+.retry-button {
+  @include claude-button-primary;
+  margin-top: var(--claude-space);
 }
 
-// 加载动画
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #e9ecef;
-  border-top: 2px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  
-  @media (max-width: 480px) {
-    width: 16px;
-    height: 16px;
-  }
-}
-
+// 动画
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }

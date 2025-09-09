@@ -64,7 +64,7 @@ func (s *Server) setupRouter() {
 
 		// 数据源状态
 		v1.GET("/data-source/status", s.getDataSourceStatus)
-		
+
 		// 预测缓存管理
 		v1.GET("/prediction-cache/status", s.getPredictionCacheStatus)
 		v1.POST("/prediction-cache/refresh", s.refreshPredictionCache)
@@ -238,22 +238,22 @@ func (s *Server) getDataSourceStatus(c *gin.Context) {
 // getPredictionCacheStatus 获取预测缓存状态
 func (s *Server) getPredictionCacheStatus(c *gin.Context) {
 	dailyPredictions, predictTime, hasPredictions := s.dataService.GetDailyPredictions()
-	
+
 	status := map[string]interface{}{
-		"has_cache": hasPredictions,
-		"cache_count": len(dailyPredictions),
-		"predict_time": "",
+		"has_cache":       hasPredictions,
+		"cache_count":     len(dailyPredictions),
+		"predict_time":    "",
 		"cache_age_hours": 0,
-		"is_valid": false,
+		"is_valid":        false,
 	}
-	
+
 	if hasPredictions {
 		status["predict_time"] = predictTime.Format("2006-01-02 15:04:05")
 		cacheAge := time.Since(predictTime)
 		status["cache_age_hours"] = int(cacheAge.Hours())
 		status["is_valid"] = cacheAge < 24*time.Hour
 	}
-	
+
 	c.JSON(http.StatusOK, model.APIResponse{
 		Code:      200,
 		Message:   "success",
@@ -266,7 +266,7 @@ func (s *Server) getPredictionCacheStatus(c *gin.Context) {
 func (s *Server) refreshPredictionCache(c *gin.Context) {
 	// 在后台异步执行预测任务
 	go s.dataService.RefreshDailyPredictions()
-	
+
 	c.JSON(http.StatusOK, model.APIResponse{
 		Code:      200,
 		Message:   "预测缓存刷新任务已启动，请稍后检查状态",

@@ -1,7 +1,7 @@
 {
-    "name": "zhitou-prediction-frontend",
+    "name": "gogotou-frontend",
     "version": "2.0.0",
-    "description": "智投预测 - Vue.js 前端应用",
+    "description": "gogotou - Vue.js 前端应用",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -14,11 +14,7 @@
         "vue": "^3.3.8",
         "vue-router": "^4.2.5",
         "pinia": "^2.1.7",
-        "axios": "^1.6.2",
-        "element-plus": "^2.4.4",
-        "@element-plus/icons-vue": "^2.3.1",
-        "echarts": "^5.4.3",
-        "vue-echarts": "^6.6.1"
+        "axios": "^1.6.2"
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^4.5.0",

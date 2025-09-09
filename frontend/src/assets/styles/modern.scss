@@ -1,0 +1,310 @@
+// Claude 风格样式
+// 导入现代字体
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+// Claude 风格色彩系统 - 更接近官网
+:root {
+    // 主要颜色 - Claude 官网风格
+    --claude-primary: #f97316; // 更温暖的橙色
+    --claude-primary-light: #fb923c; // 亮橙色
+    --claude-primary-dark: #ea580c; // 深橙色
+    --claude-primary-hover: #f97316; // 悬停橙色
+    --claude-secondary: #64748b; // 中性灰蓝
+    --claude-accent: #10b981; // 翡翠绿
+    --claude-warning: #f59e0b; // 琥珀色
+    --claude-danger: #ef4444; // 红色
+    --claude-success: #10b981; // 成功绿
+
+    // 背景颜色 - Claude 官网风格
+    --claude-bg-primary: #ffffff; // 纯白背景
+    --claude-bg-secondary: #fefefe; // 微灰白背景
+    --claude-bg-tertiary: #f8fafc; // 极淡灰背景
+    --claude-bg-card: #ffffff; // 卡片背景
+    --claude-bg-hover: #f1f5f9; // 悬停背景
+    --claude-bg-overlay: rgba(15, 23, 42, 0.02); // 极淡覆盖层
+
+    // 文字颜色 - Claude 风格
+    --claude-text-primary: #0f172a; // 主要文字 - 更深的灰色
+    --claude-text-secondary: #475569; // 次要文字
+    --claude-text-tertiary: #94a3b8; // 第三文字
+    --claude-text-muted: #cbd5e1; // 弱化文字
+    --claude-text-white: #ffffff; // 白色文字
+
+    // 边框颜色 - Claude 风格
+    --claude-border: #e2e8f0; // 主要边框
+    --claude-border-light: #f1f5f9; // 浅色边框
+    --claude-border-dark: #cbd5e1; // 深色边框
+    --claude-border-focus: #f97316; // 焦点边框
+    --claude-border-hover: #d1d5db; // 悬停边框
+
+    // 阴影 - Claude 风格柔和阴影
+    --claude-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --claude-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    --claude-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    --claude-shadow-md: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+    --claude-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    --claude-shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+
+    // 字体
+    --claude-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    --claude-font-mono: 'JetBrains Mono', 'Fira Code', 'Monaco', Consolas, monospace;
+
+    // 尺寸 - 更大的圆角
+    --claude-radius-xs: 0.25rem; // 4px
+    --claude-radius-sm: 0.5rem; // 8px
+    --claude-radius: 0.75rem; // 12px
+    --claude-radius-md: 1rem; // 16px
+    --claude-radius-lg: 1.5rem; // 24px
+    --claude-radius-xl: 2rem; // 32px
+
+    // 间距
+    --claude-space-xs: 0.25rem; // 4px
+    --claude-space-sm: 0.5rem; // 8px
+    --claude-space: 1rem; // 16px
+    --claude-space-md: 1.5rem; // 24px
+    --claude-space-lg: 2rem; // 32px
+    --claude-space-xl: 3rem; // 48px
+    --claude-space-2xl: 4rem; // 64px
+    --claude-space-3xl: 6rem; // 96px
+
+    // 过渡
+    --claude-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --claude-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Claude 风格混合器
+@mixin claude-card {
+    background: var(--claude-bg-card);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-lg);
+    box-shadow: var(--claude-shadow-sm);
+    transition: var(--claude-transition);
+
+    &:hover {
+        box-shadow: var(--claude-shadow-md);
+        border-color: var(--claude-border-hover);
+        transform: translateY(-2px);
+    }
+}
+
+@mixin claude-button-primary {
+    background: linear-gradient(135deg, var(--claude-primary), var(--claude-primary-light));
+    color: var(--claude-text-white);
+    border: 1px solid var(--claude-primary);
+    border-radius: var(--claude-radius-md);
+    padding: 0.875rem 2rem;
+    font-family: var(--claude-font-sans);
+    font-weight: 500;
+    font-size: 0.9rem;
+    line-height: 1.25rem;
+    cursor: pointer;
+    transition: var(--claude-transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    &:hover {
+        background: linear-gradient(135deg, var(--claude-primary-hover), var(--claude-primary));
+        border-color: var(--claude-primary-dark);
+        box-shadow: var(--claude-shadow-md);
+        transform: translateY(-1px);
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+    }
+
+    &:active {
+        transform: translateY(0px);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+}
+
+@mixin claude-button-secondary {
+    background: var(--claude-bg-card);
+    color: var(--claude-text-primary);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-md);
+    padding: 0.875rem 2rem;
+    font-family: var(--claude-font-sans);
+    font-weight: 500;
+    font-size: 0.9rem;
+    line-height: 1.25rem;
+    cursor: pointer;
+    transition: var(--claude-transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    &:hover {
+        background: var(--claude-bg-hover);
+        border-color: var(--claude-border-hover);
+        box-shadow: var(--claude-shadow);
+        transform: translateY(-1px);
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        border-color: var(--claude-border-focus);
+    }
+
+    &:active {
+        transform: translateY(0px);
+    }
+}
+
+@mixin claude-input {
+    background: var(--claude-bg-card);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-md);
+    padding: 0.875rem;
+    font-family: var(--claude-font-sans);
+    font-size: 0.9rem;
+    color: var(--claude-text-primary);
+    transition: var(--claude-transition);
+    width: 100%;
+
+    &::placeholder {
+        color: var(--claude-text-tertiary);
+    }
+
+    &:hover {
+        border-color: var(--claude-border-dark);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--claude-border-focus);
+        ring: 2px solid rgba(217, 119, 6, 0.1);
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+}
+
+@mixin claude-text-gradient($from, $to) {
+    background: linear-gradient(135deg, $from, $to);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+// Claude 风格动画
+@keyframes claude-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes claude-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes claude-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes claude-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+// 滚动条样式
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--claude-bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--claude-border-dark);
+    border-radius: var(--claude-radius);
+
+    &:hover {
+        background: var(--claude-text-tertiary);
+    }
+}
+
+// 选择文本样式
+::selection {
+    background: rgba(217, 119, 6, 0.15);
+    color: var(--claude-primary-dark);
+}
+
+// 输入框 Claude 风格
+input,
+textarea,
+select {
+    @include claude-input;
+}
+
+// Claude 风格工具类
+.claude-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--claude-space-lg);
+
+    @media (max-width: 768px) {
+        padding: 0 var(--claude-space);
+    }
+}
+
+.claude-grid {
+    display: grid;
+    gap: var(--claude-space-xl);
+}
+
+.claude-flex {
+    display: flex;
+    align-items: center;
+    gap: var(--claude-space);
+}
+
+.claude-text-gradient-primary {
+    @include claude-text-gradient(var(--claude-primary), var(--claude-primary-light));
+}
+
+.claude-backdrop-blur {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
