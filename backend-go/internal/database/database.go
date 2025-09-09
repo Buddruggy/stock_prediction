@@ -238,6 +238,50 @@ func (ds *DatabaseService) GetHistoricalData(indexCode string, days int) ([]mode
 	return stockData, nil
 }
 
+// GetHistoricalPredictions 获取历史预测记录
+func (ds *DatabaseService) GetHistoricalPredictions(indexCode string, days int) ([]model.PredictionRecord, error) {
+	var records []model.PredictionRecord
+
+	// 计算起始日期
+	startDate := time.Now().UTC().AddDate(0, 0, -days).Truncate(24 * time.Hour)
+
+	result := ds.db.Where("index_code = ? AND prediction_date >= ?", indexCode, startDate).
+		Order("prediction_date DESC").
+		Find(&records)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("查询历史预测记录失败 %s: %v", indexCode, result.Error)
+	}
+
+	log.Printf("📊 从数据库获取历史预测记录: %s, 数量: %d, 天数: %d", indexCode, len(records), days)
+	return records, nil
+}
+
+// GetAllHistoricalPredictions 获取所有指数的历史预测记录
+func (ds *DatabaseService) GetAllHistoricalPredictions(days int) (map[string][]model.PredictionRecord, error) {
+	var records []model.PredictionRecord
+
+	// 计算起始日期
+	startDate := time.Now().UTC().AddDate(0, 0, -days).Truncate(24 * time.Hour)
+
+	result := ds.db.Where("prediction_date >= ?", startDate).
+		Order("index_code, prediction_date DESC").
+		Find(&records)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("查询所有历史预测记录失败: %v", result.Error)
+	}
+
+	// 按指数代码分组
+	predictionMap := make(map[string][]model.PredictionRecord)
+	for _, record := range records {
+		predictionMap[record.IndexCode] = append(predictionMap[record.IndexCode], record)
+	}
+
+	log.Printf("📊 从数据库获取所有历史预测记录: %d 条记录, 天数: %d", len(records), days)
+	return predictionMap, nil
+}
+
 // ConvertPredictionToStockIndex 将预测记录转换为StockIndex
 func (ds *DatabaseService) ConvertPredictionToStockIndex(record *model.PredictionRecord) *model.StockIndex {
 	return &model.StockIndex{

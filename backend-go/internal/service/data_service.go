@@ -1215,6 +1215,56 @@ func (ds *DataService) GetDailyPredictions() (map[string]*model.StockIndex, time
 	return result, ds.dailyPredictionsTime, true
 }
 
+// GetHistoricalPredictions 获取历史预测数据
+func (ds *DataService) GetHistoricalPredictions(indexCode string, days int) ([]*model.StockIndex, error) {
+	if ds.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	records, err := ds.db.GetHistoricalPredictions(indexCode, days)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为StockIndex格式
+	var results []*model.StockIndex
+	for _, record := range records {
+		stockIndex := ds.db.ConvertPredictionToStockIndex(&record)
+		// 添加预测日期信息
+		stockIndex.Timestamp = record.PredictionDate.UTC().Format("2006-01-02")
+		results = append(results, stockIndex)
+	}
+
+	return results, nil
+}
+
+// GetAllHistoricalPredictions 获取所有指数的历史预测数据
+func (ds *DataService) GetAllHistoricalPredictions(days int) (map[string][]*model.StockIndex, error) {
+	if ds.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	recordsMap, err := ds.db.GetAllHistoricalPredictions(days)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为StockIndex格式
+	results := make(map[string][]*model.StockIndex)
+	for indexCode, records := range recordsMap {
+		var indexResults []*model.StockIndex
+		for _, record := range records {
+			stockIndex := ds.db.ConvertPredictionToStockIndex(&record)
+			// 添加预测日期信息
+			stockIndex.Timestamp = record.PredictionDate.UTC().Format("2006-01-02")
+			indexResults = append(indexResults, stockIndex)
+		}
+		results[indexCode] = indexResults
+	}
+
+	return results, nil
+}
+
 // RefreshDailyPredictions 手动刷新每日预测缓存（公开接口）
 func (ds *DataService) RefreshDailyPredictions() {
 	log.Printf("🔄 手动触发预测缓存刷新")

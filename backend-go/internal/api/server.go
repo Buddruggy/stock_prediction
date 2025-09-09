@@ -6,6 +6,7 @@ import (
 	"stock-prediction-backend/internal/config"
 	"stock-prediction-backend/internal/model"
 	"stock-prediction-backend/internal/service"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -54,6 +55,10 @@ func (s *Server) setupRouter() {
 		// 预测相关
 		v1.GET("/predict/all", s.getAllPredictions)
 		v1.GET("/predict/:index_code", s.getPrediction)
+
+		// 历史预测数据
+		v1.GET("/predict/history/all", s.getAllHistoricalPredictions)
+		v1.GET("/predict/history/:index_code", s.getHistoricalPredictions)
 
 		// 历史数据
 		v1.GET("/history/:index_code", s.getHistoryData)
@@ -271,6 +276,65 @@ func (s *Server) refreshPredictionCache(c *gin.Context) {
 		Code:      200,
 		Message:   "预测缓存刷新任务已启动，请稍后检查状态",
 		Data:      nil,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// getAllHistoricalPredictions 获取所有指数的历史预测数据
+func (s *Server) getAllHistoricalPredictions(c *gin.Context) {
+	days := 30 // 默认获取30天的历史数据
+	if daysParam := c.Query("days"); daysParam != "" {
+		if parsedDays, err := strconv.Atoi(daysParam); err == nil && parsedDays > 0 && parsedDays <= 365 {
+			days = parsedDays
+		}
+	}
+
+	historyData, err := s.dataService.GetAllHistoricalPredictions(days)
+	if err != nil {
+		log.Printf("获取所有历史预测数据失败: %v", err)
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:      500,
+			Message:   "Internal server error",
+			Data:      nil,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:      200,
+		Message:   "success",
+		Data:      historyData,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// getHistoricalPredictions 获取指定指数的历史预测数据
+func (s *Server) getHistoricalPredictions(c *gin.Context) {
+	indexCode := c.Param("index_code")
+	days := 30 // 默认获取30天的历史数据
+	if daysParam := c.Query("days"); daysParam != "" {
+		if parsedDays, err := strconv.Atoi(daysParam); err == nil && parsedDays > 0 && parsedDays <= 365 {
+			days = parsedDays
+		}
+	}
+
+	historyData, err := s.dataService.GetHistoricalPredictions(indexCode, days)
+	if err != nil {
+		log.Printf("获取历史预测数据失败 %s: %v", indexCode, err)
+		c.JSON(http.StatusNotFound, model.APIResponse{
+			Code:      404,
+			Message:   "Historical predictions not found",
+			Data:      nil,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:      200,
+		Message:   "success",
+		Data:      historyData,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	})
 }
