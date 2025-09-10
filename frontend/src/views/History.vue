@@ -2,15 +2,15 @@
   <div class="modern-history">
     <!-- 页面标题 -->
     <div class="page-header">
-      <h2 class="page-title">历史预测记录</h2>
-      <p class="page-subtitle">查看各指数的历史预测数据和准确性分析</p>
+      <h1 class="page-title">历史预测记录</h1>
+      <p class="page-subtitle">查看和分析历史股票预测数据</p>
     </div>
-    
+
     <!-- 控制面板 -->
     <div class="control-panel">
       <div class="filter-section">
         <div class="filter-item">
-          <label class="filter-label">选择指数：</label>
+          <label class="filter-label">选择指数:</label>
           <select v-model="selectedIndex" @change="fetchHistoricalData" class="filter-select">
             <option value="all">全部指数</option>
             <option value="sh000001">上证综指</option>
@@ -21,21 +21,48 @@
         </div>
         
         <div class="filter-item">
-          <label class="filter-label">时间范围：</label>
+          <label class="filter-label">时间范围:</label>
           <select v-model="selectedDays" @change="fetchHistoricalData" class="filter-select">
-            <option :value="7">最近7天</option>
-            <option :value="15">最近15天</option>
-            <option :value="30">最近30天</option>
-            <option :value="60">最近60天</option>
-            <option :value="90">最近90天</option>
+            <option value="7">近7天</option>
+            <option value="15">近15天</option>
+            <option value="30">近30天</option>
+            <option value="60">近60天</option>
+            <option value="90">近90天</option>
           </select>
         </div>
         
-        <button @click="fetchHistoricalData" class="refresh-button" :disabled="loading">
-          <span v-if="loading">🔄</span>
-          <span v-else>📊</span>
-          {{ loading ? '加载中...' : '刷新数据' }}
+        <button @click="fetchHistoricalData" :disabled="loading" class="refresh-button">
+          <span v-if="!loading">🔄</span>
+          <span v-else>⏳</span>
+          刷新数据
         </button>
+      </div>
+    </div>
+
+    <!-- 统计概览 -->
+    <div v-if="hasData" class="stats-overview">
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalPredictions }}</div>
+          <div class="stat-label">预测记录总数</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ avgConfidence }}%</div>
+          <div class="stat-label">平均置信度</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">📈</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ Object.keys(historicalData).length }}</div>
+          <div class="stat-label">覆盖指数数量</div>
+        </div>
       </div>
     </div>
 
@@ -43,211 +70,106 @@
     <div v-if="loading" class="status-section loading">
       <div class="status-card">
         <div class="loading-spinner"></div>
-        <div class="status-text">正在获取历史预测数据...</div>
+        <p class="status-text">正在加载历史预测数据...</p>
       </div>
     </div>
 
     <!-- 错误状态 -->
-    <div v-if="error && !loading" class="status-section error">
+    <div v-else-if="error" class="status-section error">
       <div class="status-card">
         <div class="error-icon">⚠️</div>
-        <div class="status-text">{{ error }}</div>
-        <button @click="fetchHistoricalData" class="retry-button">
-          重新加载
-        </button>
-      </div>
-    </div>
-
-    <!-- 数据展示 -->
-    <div v-if="!loading && !error && hasData" class="data-section">
-      <!-- 统计概览 -->
-      <div class="stats-overview">
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-content">
-            <div class="stat-number">{{ totalPredictions }}</div>
-            <div class="stat-label">总预测次数</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">📈</div>
-          <div class="stat-content">
-            <div class="stat-number">{{ avgConfidence }}%</div>
-            <div class="stat-label">平均置信度</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">📅</div>
-          <div class="stat-content">
-            <div class="stat-number">{{ selectedDays }}</div>
-            <div class="stat-label">天数范围</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon">🎯</div>
-          <div class="stat-content">
-            <div class="stat-number">{{ Object.keys(historicalData).length }}</div>
-            <div class="stat-label">涉及指数</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 历史数据表格 -->
-      <div class="history-tables">
-        <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="table-section">
-          <div class="table-header">
-            <h3 class="table-title">{{ getIndexName(indexCode) }}</h3>
-            <div class="table-stats">
-              <span class="stat-item">共 {{ predictions.length }} 条记录</span>
-              <span class="stat-item">平均置信度: {{ getAvgConfidence(predictions) }}%</span>
-            </div>
-          </div>
-          
-          <div class="table-container">
-            <table class="history-table">
-              <thead>
-                <tr>
-                  <th>预测日期</th>
-                  <th>当前价格</th>
-                  <th>预测价格</th>
-                  <th>预测涨跌</th>
-                  <th>预测涨跌幅</th>
-                  <th>置信度</th>
-                  <th>技术指标</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(prediction, index) in predictions" :key="index" class="table-row">
-                  <td class="date-cell">{{ formatDate(prediction.timestamp) }}</td>
-                  <td class="price-cell">{{ prediction.current?.toFixed(2) || '--' }}</td>
-                  <td class="price-cell">{{ prediction.predicted?.toFixed(2) || '--' }}</td>
-                  <td class="change-cell" :class="getChangeClass(prediction.change)">
-                    {{ formatChange(prediction.change) }}
-                  </td>
-                  <td class="percent-cell" :class="getChangeClass(prediction.change)">
-                    {{ formatPercent(prediction.changePercent) }}
-                  </td>
-                  <td class="confidence-cell">
-                    <div class="confidence-bar-container">
-                      <div 
-                        class="confidence-bar" 
-                        :style="{ width: prediction.confidence + '%' }"
-                        :class="getConfidenceClass(prediction.confidence)"
-                      ></div>
-                      <span class="confidence-text">{{ prediction.confidence?.toFixed(1) || '--' }}%</span>
-                    </div>
-                  </td>
-                  <td class="indicators-cell">
-                    <button @click="showIndicators(prediction)" class="indicators-button">
-                      查看详情
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <p class="status-text">{{ error }}</p>
+        <button @click="fetchHistoricalData" class="retry-button">重试</button>
       </div>
     </div>
 
     <!-- 空数据状态 -->
-    <div v-if="!loading && !error && !hasData" class="status-section empty">
+    <div v-else-if="!hasData" class="status-section empty">
       <div class="status-card">
         <div class="empty-icon">📊</div>
-        <div class="status-text">暂无历史预测数据</div>
-        <p class="empty-description">请等待系统生成预测数据，或调整筛选条件</p>
-        <button @click="fetchHistoricalData" class="retry-button">
-          刷新数据
-        </button>
+        <p class="status-text">暂无历史预测数据</p>
+        <p class="empty-description">请调整筛选条件或稍后再试</p>
       </div>
     </div>
 
-    <!-- 技术指标详情模态框 -->
+    <!-- 历史数据表格 -->
+    <div v-else class="history-tables">
+      <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="table-section">
+        <div class="table-header">
+          <h3 class="table-title">{{ getIndexName(indexCode) }}</h3>
+          <div class="table-stats">
+            <span class="stat-item">记录数: {{ predictions.length }}</span>
+            <span class="stat-item">平均置信度: {{ getAvgConfidence(predictions) }}%</span>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>预测日期</th>
+                <th>收盘价</th>
+                <th>涨跌额</th>
+                <th>涨跌幅</th>
+                <th>置信度</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="prediction in predictions" :key="prediction.id || prediction.timestamp" class="table-row">
+                <td class="date-cell">{{ formatDate(prediction.timestamp || prediction.prediction_date) }}</td>
+                <td class="price-cell">{{ prediction.close_price?.toFixed(2) || '--' }}</td>
+                <td class="change-cell" :class="getChangeClass(prediction.change)">
+                  {{ formatChange(prediction.change) }}
+                </td>
+                <td class="percent-cell" :class="getChangeClass(prediction.change_percent)">
+                  {{ formatPercent(prediction.change_percent) }}
+                </td>
+                <td class="confidence-cell">
+                  <div class="confidence-bar-container">
+                    <div 
+                      class="confidence-bar"
+                      :class="getConfidenceClass(prediction.confidence)"
+                      :style="{ width: `${prediction.confidence || 0}%` }"
+                    ></div>
+                    <span class="confidence-text">{{ prediction.confidence?.toFixed(1) || '0' }}%</span>
+                  </div>
+                </td>
+                <td>
+                  <button 
+                    @click="showIndicators(prediction)"
+                    class="indicators-button"
+                    v-if="prediction.technical_indicators"
+                  >
+                    查看技术指标
+                  </button>
+                  <span v-else class="text-muted">无数据</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 技术指标模态框 -->
     <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3 class="modal-title">技术指标详情</h3>
-          <button @click="closeModal" class="modal-close">✕</button>
+          <h4 class="modal-title">技术指标详情</h4>
+          <button @click="closeModal" class="modal-close">×</button>
         </div>
-        
-        <div class="modal-body" v-if="selectedPrediction">
-          <div class="indicator-grid">
-            <div class="indicator-item">
-              <div class="indicator-label">5日移动平均线 (MA5)</div>
-              <div class="indicator-value">{{ selectedPrediction.technical_indicators?.ma_5?.toFixed(2) || '--' }}</div>
-            </div>
-            
-            <div class="indicator-item">
-              <div class="indicator-label">20日移动平均线 (MA20)</div>
-              <div class="indicator-value">{{ selectedPrediction.technical_indicators?.ma_20?.toFixed(2) || '--' }}</div>
-            </div>
-            
-            <div class="indicator-item">
-              <div class="indicator-label">相对强弱指数 (RSI)</div>
-              <div class="indicator-value">{{ selectedPrediction.technical_indicators?.rsi?.toFixed(2) || '--' }}</div>
-            </div>
-            
-            <div class="indicator-item">
-              <div class="indicator-label">波动率</div>
-              <div class="indicator-value">{{ selectedPrediction.technical_indicators?.volatility?.toFixed(2) || '--' }}%</div>
-            </div>
-            
-            <div class="indicator-item">
-              <div class="indicator-label">趋势指标</div>
-              <div class="indicator-value">{{ selectedPrediction.technical_indicators?.trend?.toFixed(2) || '--' }}%</div>
+        <div class="modal-body">
+          <div v-if="selectedPrediction?.technical_indicators" class="indicator-grid">
+            <div v-for="(value, key) in selectedPrediction.technical_indicators" :key="key" class="indicator-item">
+              <div class="indicator-label">{{ key }}</div>
+              <div class="indicator-value">{{ typeof value === 'number' ? value.toFixed(4) : value }}</div>
             </div>
             
             <div class="indicator-item">
               <div class="indicator-label">预测日期</div>
               <div class="indicator-value">{{ formatDate(selectedPrediction.timestamp) }}</div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-                  <p class="feature-desc">直观比较不同指数的历史表现</p>
-                </div>
-              </div>
-              
-              <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <div class="feature-content">
-                  <h5 class="feature-name">预测误差分析</h5>
-                  <p class="feature-desc">详细分析预测误差的分布和趋势</p>
-                </div>
-              </div>
-              
-              <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <div class="feature-content">
-                  <h5 class="feature-name">模型性能评估</h5>
-                  <p class="feature-desc">全面评估AI模型的预测性能</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="progress-section">
-            <div class="progress-header">
-              <span class="progress-label">开发进度</span>
-              <span class="progress-value">75%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 75%"></div>
-            </div>
-          </div>
-          
-          <div class="notice-footer">
-            <div class="status-badge">
-              <span class="status-dot"></span>
-              <span class="status-text">开发中</span>
-            </div>
-            <span class="eta-text">预计完成时间：2024年Q2</span>
           </div>
         </div>
       </div>
@@ -407,14 +329,31 @@ onMounted(() => {
   fetchHistoricalData()
 })
 </script>
-const getBarHeight = (index) => {
-  const heights = ['60%', '80%', '45%', '90%', '70%', '55%']
-  return heights[index - 1] || '50%'
-}
-</script>
 
 <style lang="scss" scoped>
-@import '../assets/styles/main.scss';
+// 使用内联样式变量定义，避免外部依赖
+:root {
+  --claude-space: 8px;
+  --claude-space-sm: 4px;
+  --claude-space-lg: 16px;
+  --claude-space-xl: 24px;
+  --claude-space-xs: 2px;
+  --claude-radius: 8px;
+  --claude-radius-lg: 12px;
+  --claude-border: #e5e7eb;
+  --claude-bg-primary: #ffffff;
+  --claude-bg-secondary: #f9fafb;
+  --claude-bg-tertiary: #f3f4f6;
+  --claude-text-primary: #111827;
+  --claude-text-secondary: #6b7280;
+  --claude-text-tertiary: #9ca3af;
+  --claude-primary: #3b82f6;
+  --claude-success: #10b981;
+  --claude-warning: #f59e0b;
+  --claude-danger: #ef4444;
+  --claude-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --claude-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
 
 .modern-history {
   min-height: 100vh;
@@ -449,7 +388,11 @@ const getBarHeight = (index) => {
 }
 
 .control-panel {
-  @include claude-card;
+  background: var(--claude-bg-primary);
+  border: 1px solid var(--claude-border);
+  border-radius: var(--claude-radius-lg);
+  padding: var(--claude-space-xl);
+  box-shadow: var(--claude-shadow);
   margin-bottom: var(--claude-space-xl);
   
   .filter-section {
@@ -497,10 +440,20 @@ const getBarHeight = (index) => {
   }
   
   .refresh-button {
-    @include claude-button-primary;
+    background: var(--claude-primary);
+    color: white;
+    border: none;
+    padding: var(--claude-space) var(--claude-space-lg);
+    border-radius: var(--claude-radius);
+    font-weight: 600;
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: var(--claude-space-sm);
+    
+    &:hover {
+      background: #2563eb;
+    }
     
     &:disabled {
       opacity: 0.6;
@@ -516,11 +469,14 @@ const getBarHeight = (index) => {
   margin-bottom: var(--claude-space-xl);
   
   .stat-card {
-    @include claude-card;
+    background: var(--claude-bg-primary);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-lg);
+    padding: var(--claude-space-xl);
+    box-shadow: var(--claude-shadow);
     display: flex;
     align-items: center;
     gap: var(--claude-space-lg);
-    padding: var(--claude-space-lg);
     
     .stat-icon {
       font-size: 2rem;
@@ -545,7 +501,11 @@ const getBarHeight = (index) => {
 
 .history-tables {
   .table-section {
-    @include claude-card;
+    background: var(--claude-bg-primary);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-lg);
+    padding: 0;
+    box-shadow: var(--claude-shadow);
     margin-bottom: var(--claude-space-xl);
     overflow: hidden;
     
@@ -662,9 +622,17 @@ const getBarHeight = (index) => {
       }
       
       .indicators-button {
-        @include claude-button-secondary;
-        font-size: 0.8rem;
+        background: var(--claude-bg-secondary);
+        color: var(--claude-text-primary);
+        border: 1px solid var(--claude-border);
         padding: var(--claude-space-sm) var(--claude-space);
+        border-radius: var(--claude-radius);
+        font-size: 0.8rem;
+        cursor: pointer;
+        
+        &:hover {
+          background: var(--claude-bg-tertiary);
+        }
       }
     }
   }
@@ -677,9 +645,12 @@ const getBarHeight = (index) => {
   margin: var(--claude-space-xl) auto;
   
   .status-card {
-    @include claude-card;
-    text-align: center;
+    background: var(--claude-bg-primary);
+    border: 1px solid var(--claude-border);
+    border-radius: var(--claude-radius-lg);
     padding: var(--claude-space-xl);
+    box-shadow: var(--claude-shadow);
+    text-align: center;
     max-width: 500px;
     
     @media (max-width: 480px) {
@@ -732,8 +703,18 @@ const getBarHeight = (index) => {
 }
 
 .retry-button {
-  @include claude-button-primary;
+  background: var(--claude-primary);
+  color: white;
+  border: none;
+  padding: var(--claude-space) var(--claude-space-lg);
+  border-radius: var(--claude-radius);
+  font-weight: 600;
+  cursor: pointer;
   margin-top: var(--claude-space);
+  
+  &:hover {
+    background: #2563eb;
+  }
 }
 
 // 模态框样式
