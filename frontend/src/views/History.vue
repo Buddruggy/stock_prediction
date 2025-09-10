@@ -10,17 +10,6 @@
     <div class="control-panel">
       <div class="filter-section">
         <div class="filter-item">
-          <label class="filter-label">选择指数:</label>
-          <select v-model="selectedIndex" @change="fetchHistoricalData" class="filter-select">
-            <option value="all">全部指数</option>
-            <option value="sh000001">上证综指</option>
-            <option value="sz399001">深证成指</option>
-            <option value="sz399006">创业板指</option>
-            <option value="sh000688">科创50</option>
-          </select>
-        </div>
-        
-        <div class="filter-item">
           <label class="filter-label">时间范围:</label>
           <select v-model="selectedDays" @change="fetchHistoricalData" class="filter-select">
             <option value="7">近7天</option>
@@ -108,9 +97,10 @@
             <thead>
               <tr>
                 <th>预测日期</th>
-                <th>收盘价</th>
-                <th>涨跌额</th>
-                <th>涨跌幅</th>
+                <th>当前价格</th>
+                <th>预测价格</th>
+                <th>预测涨跌额</th>
+                <th>预测涨跌幅</th>
                 <th>置信度</th>
                 <th>操作</th>
               </tr>
@@ -118,7 +108,8 @@
             <tbody>
               <tr v-for="prediction in predictions" :key="prediction.id || prediction.timestamp" class="table-row">
                 <td class="date-cell">{{ formatDate(prediction.timestamp || prediction.prediction_date) }}</td>
-                <td class="price-cell">{{ prediction.close_price?.toFixed(2) || '--' }}</td>
+                <td class="price-cell">{{ prediction.current?.toFixed(2) || '--' }}</td>
+                <td class="price-cell predicted">{{ prediction.predicted?.toFixed(2) || '--' }}</td>
                 <td class="change-cell" :class="getChangeClass(prediction.change)">
                   {{ formatChange(prediction.change) }}
                 </td>
@@ -231,27 +222,13 @@ const fetchHistoricalData = async () => {
   error.value = ''
   
   try {
-    let url = '/api/v1/predict/history'
-    
-    if (selectedIndex.value === 'all') {
-      url += '/all'
-    } else {
-      url += `/${selectedIndex.value}`
-    }
-    
-    url += `?days=${selectedDays.value}`
+    // 始终获取所有指数的数据
+    const url = `/api/v1/predict/history/all?days=${selectedDays.value}`
     
     const response = await axios.get(url)
     
     if (response.data.code === 200) {
-      if (selectedIndex.value === 'all') {
-        historicalData.value = response.data.data || {}
-      } else {
-        // 单个指数的数据需要包装成对象格式
-        historicalData.value = {
-          [selectedIndex.value]: response.data.data || []
-        }
-      }
+      historicalData.value = response.data.data || {}
     } else {
       error.value = response.data.message || '获取数据失败'
       historicalData.value = {}
@@ -573,6 +550,11 @@ onMounted(() => {
       .price-cell {
         font-family: monospace;
         font-weight: 600;
+        
+        &.predicted {
+          color: var(--claude-primary);
+          background: rgba(59, 130, 246, 0.1);
+        }
       }
       
       .change-cell, .percent-cell {
