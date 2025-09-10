@@ -113,8 +113,8 @@
                 <td class="change-cell" :class="getChangeClass(prediction.change)">
                   {{ formatChange(prediction.change) }}
                 </td>
-                <td class="percent-cell" :class="getChangeClass(prediction.change_percent)">
-                  {{ formatPercent(prediction.change_percent) }}
+                <td class="percent-cell" :class="getChangeClass(prediction.changePercent)">
+                  {{ formatPercent(prediction.changePercent) }}
                 </td>
                 <td class="confidence-cell">
                   <div class="confidence-bar-container">
