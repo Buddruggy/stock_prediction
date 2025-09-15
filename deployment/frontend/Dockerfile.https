@@ -31,8 +31,10 @@ COPY deployment/frontend/nginx-https.conf /etc/nginx/nginx.conf
 # 复制构建好的文件到nginx目录
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 创建SSL证书目录
+# 复制SSL证书
 RUN mkdir -p /etc/nginx/ssl
+COPY ssl/gogotou.key /etc/nginx/ssl/gogotou.key
+COPY ssl/gogotou.pem /etc/nginx/ssl/gogotou.pem
 
 # 创建非root用户
 RUN addgroup -g 1001 -S app && \
