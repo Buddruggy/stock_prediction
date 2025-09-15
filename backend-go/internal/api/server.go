@@ -73,7 +73,7 @@ func (s *Server) setupRouter() {
 		// 预测缓存管理
 		v1.GET("/prediction-cache/status", s.getPredictionCacheStatus)
 		v1.POST("/prediction-cache/refresh", s.refreshPredictionCache)
-		
+
 		// 预测统计信息
 		v1.GET("/prediction-stats", s.getPredictionStats)
 	}

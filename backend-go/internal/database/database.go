@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"math"
 	"stock-prediction-backend/internal/config"
 	"stock-prediction-backend/internal/model"
 	"strings"
@@ -315,4 +316,64 @@ func (ds *DatabaseService) Close() error {
 		return err
 	}
 	return sqlDB.Close()
+}
+
+// GetHistoricalPredictionsForDate 获取指定日期的历史预测记录
+func (ds *DatabaseService) GetHistoricalPredictionsForDate(date time.Time) ([]model.PredictionRecord, error) {
+	var records []model.PredictionRecord
+
+	result := ds.db.Where("prediction_date = ? AND is_correct IS NULL", date).
+		Find(&records)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("查询历史预测记录失败: %v", result.Error)
+	}
+
+	return records, nil
+}
+
+// UpdatePredictionAccuracy 更新预测准确性
+func (ds *DatabaseService) UpdatePredictionAccuracy(recordID uint, isCorrect bool) error {
+	result := ds.db.Model(&model.PredictionRecord{}).
+		Where("id = ?", recordID).
+		Updates(map[string]interface{}{
+			"is_correct": isCorrect,
+		})
+
+	if result.Error != nil {
+		return fmt.Errorf("更新预测准确性失败: %v", result.Error)
+	}
+
+	return nil
+}
+
+// GetPredictionStats 获取预测统计信息
+func (ds *DatabaseService) GetPredictionStats() (map[string]interface{}, error) {
+	// 获取总预测次数（已验证的）
+	var totalPredictions int64
+	if err := ds.db.Model(&model.PredictionRecord{}).
+		Where("is_correct IS NOT NULL").
+		Count(&totalPredictions).Error; err != nil {
+		return nil, fmt.Errorf("查询总预测次数失败: %v", err)
+	}
+
+	// 获取预测正确的次数
+	var correctPredictions int64
+	if err := ds.db.Model(&model.PredictionRecord{}).
+		Where("is_correct = ?", true).
+		Count(&correctPredictions).Error; err != nil {
+		return nil, fmt.Errorf("查询正确预测次数失败: %v", err)
+	}
+
+	// 计算成功率（避免除零错误）
+	var successRate float64
+	if totalPredictions > 0 {
+		successRate = float64(correctPredictions) / float64(totalPredictions) * 100
+	}
+
+	return map[string]interface{}{
+		"total_predictions":   totalPredictions,
+		"correct_predictions": correctPredictions,
+		"success_rate":        math.Round(successRate*100) / 100, // 保留两位小数
+	}, nil
 }

@@ -263,7 +263,7 @@ onMounted(() => {
   
   .stats-section {
     .stats-text {
-      font-size: 0.9rem;
+      font-size: 1.1rem;
       color: var(--claude-text-secondary);
       font-weight: 500;
     }
@@ -596,4 +596,3 @@ onMounted(() => {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-</style>
