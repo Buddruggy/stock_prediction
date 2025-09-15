@@ -1065,14 +1065,22 @@ func (ds *DataService) checkAndPerformInitialPrediction() {
 
 // startDailyScheduler 启动每日定时调度器
 func (ds *DataService) startDailyScheduler() {
+	// 设置上海时区 (UTC+8)
+	shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+
 	for {
-		// 计算下一次下午3点10分的时间
-		now := time.Now()
-		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 15, 10, 0, 0, now.Location())
+		// 计算下一次下午3点10分的时间（使用上海时区）
+		now := time.Now().In(shanghaiLoc)
+		nextRun := time.Date(now.Year(), now.Month(), now.Day()+1, 15, 10, 0, 0, shanghaiLoc)
 
 		// 如果当前时间在下午3点10分之前，则今天就执行
 		if now.Hour() < 15 || (now.Hour() == 15 && now.Minute() < 10) {
-			nextRun = time.Date(now.Year(), now.Month(), now.Day(), 15, 10, 0, 0, now.Location())
+			nextRun = time.Date(now.Year(), now.Month(), now.Day(), 15, 10, 0, 0, shanghaiLoc)
+		}
+
+		// 检查是否是工作日（周一到周五）
+		for !ds.isWeekday(nextRun) {
+			nextRun = nextRun.AddDate(0, 0, 1)
 		}
 
 		duration := nextRun.Sub(now)
@@ -1093,6 +1101,15 @@ func (ds *DataService) startDailyScheduler() {
 			return
 		}
 	}
+}
+
+// isWeekday 检查是否是工作日（周一到周五，使用上海时区）
+func (ds *DataService) isWeekday(t time.Time) bool {
+	// 确保使用上海时区进行判断
+	shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+	localTime := t.In(shanghaiLoc)
+	weekday := localTime.Weekday()
+	return weekday != time.Saturday && weekday != time.Sunday
 }
 
 // performDailyPrediction 执行每日预测任务
