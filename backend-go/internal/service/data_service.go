@@ -1288,6 +1288,43 @@ func (ds *DataService) RefreshDailyPredictions() {
 	ds.performDailyPrediction()
 }
 
+// GetPredictionStats 获取预测统计信息（预测次数和成功率）
+func (ds *DataService) GetPredictionStats() (map[string]interface{}, error) {
+	if ds.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	// 获取总预测次数
+	var totalPredictions int64
+	if err := ds.db.GetDB().Model(&model.PredictionRecord{}).Count(&totalPredictions).Error; err != nil {
+		return nil, fmt.Errorf("查询总预测次数失败: %v", err)
+	}
+
+	// 获取预测正确的次数
+	// 预测正确的定义：预测涨跌方向与实际涨跌方向一致
+	var correctPredictions int64
+	// 构建查询：预测涨跌方向与实际涨跌方向一致的记录数
+	// 这需要比较 predicted_price 与 current_price 的差值符号与 change 的符号是否一致
+	// 使用反引号转义关键字 'change'
+	if err := ds.db.GetDB().Model(&model.PredictionRecord{}).
+		Where("(predicted_price - current_price) * `change` > 0").
+		Count(&correctPredictions).Error; err != nil {
+		return nil, fmt.Errorf("查询正确预测次数失败: %v", err)
+	}
+
+	// 计算成功率（避免除零错误）
+	var successRate float64
+	if totalPredictions > 0 {
+		successRate = float64(correctPredictions) / float64(totalPredictions) * 100
+	}
+
+	return map[string]interface{}{
+		"total_predictions":   totalPredictions,
+		"correct_predictions": correctPredictions,
+		"success_rate":        math.Round(successRate*100) / 100, // 保留两位小数
+	}, nil
+}
+
 // Stop 停止定时任务
 func (ds *DataService) Stop() {
 	select {

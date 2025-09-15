@@ -303,6 +303,11 @@ func (ds *DatabaseService) ConvertPredictionToStockIndex(record *model.Predictio
 	}
 }
 
+// GetDB 获取底层gorm.DB对象
+func (ds *DatabaseService) GetDB() *gorm.DB {
+	return ds.db
+}
+
 // Close 关闭数据库连接
 func (ds *DatabaseService) Close() error {
 	sqlDB, err := ds.db.DB()

@@ -73,6 +73,9 @@ func (s *Server) setupRouter() {
 		// 预测缓存管理
 		v1.GET("/prediction-cache/status", s.getPredictionCacheStatus)
 		v1.POST("/prediction-cache/refresh", s.refreshPredictionCache)
+		
+		// 预测统计信息
+		v1.GET("/prediction-stats", s.getPredictionStats)
 	}
 }
 
@@ -276,6 +279,28 @@ func (s *Server) refreshPredictionCache(c *gin.Context) {
 		Code:      200,
 		Message:   "预测缓存刷新任务已启动，请稍后检查状态",
 		Data:      nil,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// getPredictionStats 获取预测统计信息
+func (s *Server) getPredictionStats(c *gin.Context) {
+	stats, err := s.dataService.GetPredictionStats()
+	if err != nil {
+		log.Printf("获取预测统计信息失败: %v", err)
+		c.JSON(http.StatusInternalServerError, model.APIResponse{
+			Code:      500,
+			Message:   "Internal server error",
+			Data:      nil,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.APIResponse{
+		Code:      200,
+		Message:   "success",
+		Data:      stats,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	})
 }
