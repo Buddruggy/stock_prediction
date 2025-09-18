@@ -97,6 +97,13 @@
             :ref="el => setChartRef(el, indexCode)" 
             class="price-chart"
           ></canvas>
+          
+          <!-- 备用显示：如果图表加载失败 -->
+          <div v-if="!charts[indexCode]" class="chart-fallback">
+            <div class="fallback-message">
+              <p>图表加载中...</p>
+            </div>
+          </div>
         </div>
         
         <!-- 图表说明 -->
@@ -108,6 +115,18 @@
           <div class="legend-item">
             <div class="legend-color predicted"></div>
             <span>预测价格（后移一天）</span>
+          </div>
+        </div>
+        
+        <!-- 备用数据表格（如果图表失败） -->
+        <div v-if="showFallbackTable" class="fallback-table">
+          <h4>数据概览</h4>
+          <div class="simple-data-list">
+            <div v-for="(prediction, index) in predictions.slice(0, 5)" :key="index" class="data-item">
+              <span class="date">{{ formatDate(prediction.timestamp || prediction.prediction_date) }}</span>
+              <span class="current-price">{{ prediction.current?.toFixed(2) || '--' }}</span>
+              <span class="predicted-price">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -151,6 +170,7 @@ const selectedDays = ref(30)
 const showModal = ref(false)
 const selectedPrediction = ref(null)
 const charts = ref({})
+const showFallbackTable = ref(false)
 
 // 设置图表引用
 const setChartRef = (el, indexCode) => {
@@ -314,15 +334,16 @@ const processChartData = (predictions) => {
 
 // 绘制折线图
 const drawChart = (canvas, predictions) => {
-  if (!canvas || !predictions) return
+  if (!canvas || !predictions || predictions.length === 0) return
   
-  const ctx = canvas.getContext('2d')
-  const { labels, currentPrices, predictedPrices } = processChartData(predictions)
-  
-  // 清除画布
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  
-  if (labels.length === 0) return
+  try {
+    const ctx = canvas.getContext('2d')
+    const { labels, currentPrices, predictedPrices } = processChartData(predictions)
+    
+    // 清除画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    if (labels.length === 0) return
   
   // 设置画布尺寸
   const rect = canvas.getBoundingClientRect()
@@ -336,11 +357,13 @@ const drawChart = (canvas, predictions) => {
   const chartHeight = rect.height - padding * 2
   
   // 计算价格范围
-  const allPrices = [...currentPrices, ...predictedPrices.filter(p => p !== null)]
+  const allPrices = [...currentPrices, ...predictedPrices.filter(p => p !== null && p > 0)]
+  if (allPrices.length === 0) return
+  
   const minPrice = Math.min(...allPrices)
   const maxPrice = Math.max(...allPrices)
   const priceRange = maxPrice - minPrice
-  const pricePadding = priceRange * 0.1
+  const pricePadding = priceRange > 0 ? priceRange * 0.1 : maxPrice * 0.1
   
   // 绘制网格
   ctx.strokeStyle = '#e5e7eb'
@@ -443,19 +466,46 @@ const drawChart = (canvas, predictions) => {
     const y = padding + chartHeight + 20
     ctx.fillText(label, x, y)
   })
+  
+  } catch (error) {
+    console.error('绘制图表时出错:', error)
+  }
 }
 
 // 初始化所有图表
 const initCharts = async () => {
-  await nextTick()
-  
-  Object.keys(historicalData.value).forEach(indexCode => {
-    const canvas = charts.value[indexCode]
-    if (canvas) {
+  try {
+    await nextTick()
+    
+    console.log('初始化图表，数据:', historicalData.value)
+    
+    let hasValidCharts = false
+    
+    Object.keys(historicalData.value).forEach(indexCode => {
+      const canvas = charts.value[indexCode]
       const predictions = historicalData.value[indexCode]
-      drawChart(canvas, predictions)
-    }
-  })
+      
+      console.log(`处理指数 ${indexCode}:`, { canvas: !!canvas, predictionsCount: predictions?.length })
+      
+      if (canvas && predictions && predictions.length > 0) {
+        try {
+          drawChart(canvas, predictions)
+          hasValidCharts = true
+        } catch (error) {
+          console.error(`绘制指数 ${indexCode} 图表失败:`, error)
+        }
+      } else {
+        console.warn(`跳过指数 ${indexCode}:`, { canvas: !!canvas, predictionsCount: predictions?.length })
+      }
+    })
+    
+    // 如果所有图表都失败了，显示备用表格
+    showFallbackTable.value = !hasValidCharts
+    
+  } catch (error) {
+    console.error('初始化图表时出错:', error)
+    showFallbackTable.value = true
+  }
 }
 
 // 监听数据变化
@@ -693,6 +743,29 @@ onMounted(() => {
           height: 250px;
         }
       }
+      
+      .chart-fallback {
+        position: absolute;
+        top: var(--claude-space-lg);
+        left: var(--claude-space-lg);
+        right: var(--claude-space-lg);
+        bottom: var(--claude-space-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--claude-bg-secondary);
+        border-radius: var(--claude-radius);
+        
+        .fallback-message {
+          text-align: center;
+          color: var(--claude-text-secondary);
+          
+          p {
+            margin: 0;
+            font-size: 1rem;
+          }
+        }
+      }
     }
     
     .chart-legend {
@@ -735,6 +808,50 @@ onMounted(() => {
         flex-direction: column;
         align-items: center;
         gap: var(--claude-space);
+      }
+    }
+    
+    .fallback-table {
+      padding: var(--claude-space-lg);
+      border-top: 1px solid var(--claude-border);
+      
+      h4 {
+        margin: 0 0 var(--claude-space-lg) 0;
+        color: var(--claude-text-primary);
+        font-size: 1rem;
+      }
+      
+      .simple-data-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--claude-space-sm);
+        
+        .data-item {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: var(--claude-space);
+          padding: var(--claude-space);
+          background: var(--claude-bg-secondary);
+          border-radius: var(--claude-radius);
+          font-size: 0.9rem;
+          
+          .date {
+            color: var(--claude-text-secondary);
+            font-family: monospace;
+          }
+          
+          .current-price {
+            color: var(--claude-text-primary);
+            font-family: monospace;
+            font-weight: 600;
+          }
+          
+          .predicted-price {
+            color: var(--claude-primary);
+            font-family: monospace;
+            font-weight: 600;
+          }
+        }
       }
     }
   }
