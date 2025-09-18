@@ -54,6 +54,10 @@
             <span class="copyright">&copy; 2025 <span class="footer-logo">GoGoTou</span></span>
             <span class="divider">•</span>
             <span class="disclaimer">投资需谨慎</span>
+            <span class="divider">•</span>
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="icp-link">
+              粤ICP备2025471115号-1
+            </a>
           </div>
         </div>
       </div>
@@ -362,6 +366,22 @@ body {
       font-weight: 500;
     }
     
+    .icp-link {
+      color: var(--claude-text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: var(--claude-transition);
+      
+      &:hover {
+        color: var(--claude-primary);
+        text-decoration: underline;
+      }
+      
+      &:visited {
+        color: var(--claude-text-secondary);
+      }
+    }
+    
     .footer-logo {
       font-weight: 600;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -383,6 +403,12 @@ body {
     @media (max-width: 480px) {
       font-size: 0.85rem;
       gap: var(--claude-space-sm);
+      flex-wrap: wrap;
+      justify-content: center;
+      
+      .icp-link {
+        font-size: 0.85rem;
+      }
     }
   }
 
