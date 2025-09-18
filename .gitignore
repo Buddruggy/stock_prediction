@@ -166,3 +166,5 @@ frontend/.eslintcache
 # 后端相关
 backend-go/bin/
 backend-go/tmp/
+backend-go/stock-prediction
+backend-go/main

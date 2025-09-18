@@ -1117,6 +1117,9 @@ func (ds *DataService) performDailyPrediction() {
 	log.Printf("🤖 开始执行每日预测任务...")
 	start := time.Now()
 
+	// 首先验证昨天的预测结果
+	ds.validatePreviousPredictions()
+
 	newPredictions := make(map[string]*model.StockIndex)
 	successCount := 0
 	failedCount := 0
@@ -1161,6 +1164,51 @@ func (ds *DataService) performDailyPrediction() {
 
 	// 清理旧的短期缓存
 	ds.ClearCache()
+}
+
+// validatePreviousPredictions 验证昨天的预测结果
+func (ds *DataService) validatePreviousPredictions() {
+	if ds.db == nil {
+		return
+	}
+
+	// 计算昨天的日期
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)
+
+	// 获取昨天的预测记录
+	records, err := ds.db.GetHistoricalPredictionsForDate(yesterday)
+	if err != nil {
+		log.Printf("❌ 获取昨天预测记录失败: %v", err)
+		return
+	}
+
+	// 遍历每个预测记录，验证其准确性
+	for _, record := range records {
+		// 获取当前价格（实际的第二天价格）
+		currentStockData, err := ds.GetCurrentStockData(StockIndices[record.IndexCode].Symbol)
+		if err != nil {
+			log.Printf("❌ 获取 %s 当前价格失败: %v", record.IndexCode, err)
+			continue
+		}
+
+		currentPrice := currentStockData.Close
+
+		// 判断预测是否正确
+		// 预测正确的定义：预测涨跌方向与实际涨跌方向一致
+		predictedDirection := record.PredictedPrice - record.CurrentPrice
+		actualDirection := currentPrice - record.CurrentPrice
+
+		isCorrect := (predictedDirection * actualDirection) > 0
+
+		// 更新数据库中的预测记录
+		if err := ds.db.UpdatePredictionAccuracy(record.ID, isCorrect); err != nil {
+			log.Printf("❌ 更新 %s 预测准确性失败: %v", record.IndexCode, err)
+			continue
+		}
+
+		log.Printf("✅ 验证 %s 预测结果: 预测价格=%.2f, 实际价格=%.2f, 预测%s",
+			record.IndexCode, record.PredictedPrice, currentPrice, map[bool]string{true: "正确", false: "错误"}[isCorrect])
+	}
 }
 
 // generateSinglePrediction 生成单个指数的预测（专用于定时任务）
@@ -1286,6 +1334,15 @@ func (ds *DataService) GetAllHistoricalPredictions(days int) (map[string][]*mode
 func (ds *DataService) RefreshDailyPredictions() {
 	log.Printf("🔄 手动触发预测缓存刷新")
 	ds.performDailyPrediction()
+}
+
+// GetPredictionStats 获取预测统计信息（预测次数和成功率）
+func (ds *DataService) GetPredictionStats() (map[string]interface{}, error) {
+	if ds.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	return ds.db.GetPredictionStats()
 }
 
 // Stop 停止定时任务

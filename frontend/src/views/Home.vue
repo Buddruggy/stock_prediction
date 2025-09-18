@@ -3,6 +3,9 @@
     <!-- Claude 风格英雄区域 -->
     <div class="hero-section">
       <h2 class="hero-title">AI 驱动的智能股指预测</h2>
+      <div v-if="stats" class="stats-section">
+        <span class="stats-text">已累计预测 {{ stats.total_predictions }} 次，成功率 {{ stats.success_rate }}%</span>
+      </div>
     </div>
 
     <!-- 预测卡片网格 -->
@@ -111,6 +114,7 @@ import axios from 'axios'
 const predictions = ref({})
 const loading = ref(false)
 const error = ref('')
+const stats = ref(null)
 
 // 格式化涨跌显示
 const formatChange = (change, changePercent) => {
@@ -147,6 +151,18 @@ const indices = [
   { code: 'sz399006', name: '创业板指' },
   { code: 'sh000688', name: '科创50' }
 ]
+
+// 获取预测统计信息
+const fetchPredictionStats = async () => {
+  try {
+    const response = await axios.get('/api/v1/prediction-stats')
+    if (response.data.code === 200) {
+      stats.value = response.data.data
+    }
+  } catch (err) {
+    console.warn('获取预测统计信息失败:', err)
+  }
+}
 
 const fetchPredictions = async () => {
   loading.value = true
@@ -206,6 +222,7 @@ const fetchPredictions = async () => {
 }
 
 onMounted(() => {
+  fetchPredictionStats()
   fetchPredictions()
 })
 </script>
@@ -241,6 +258,14 @@ onMounted(() => {
     
     @media (max-width: 480px) {
       font-size: 1.6rem;
+    }
+  }
+  
+  .stats-section {
+    .stats-text {
+      font-size: 1.1rem;
+      color: var(--claude-text-secondary);
+      font-weight: 500;
     }
   }
 }
@@ -571,4 +596,5 @@ onMounted(() => {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
 </style>

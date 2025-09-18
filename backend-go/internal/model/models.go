@@ -102,6 +102,7 @@ type PredictionRecord struct {
 	RSI            float64   `gorm:"type:decimal(5,2)" json:"rsi"`                       // RSI指标
 	Volatility     float64   `gorm:"type:decimal(5,2)" json:"volatility"`                // 波动率
 	Trend          float64   `gorm:"type:decimal(5,2)" json:"trend"`                     // 趋势指标
+	IsCorrect      *bool     `gorm:"type:bool;default:null" json:"is_correct"`           // 预测是否正确（空值表示尚未验证）
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`                   // 创建时间
 	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`                   // 更新时间
 }
