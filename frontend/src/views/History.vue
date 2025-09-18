@@ -345,16 +345,20 @@ const drawChart = (canvas, predictions) => {
     
     if (labels.length === 0) return
   
-  // 设置画布尺寸
-  const rect = canvas.getBoundingClientRect()
-  canvas.width = rect.width * window.devicePixelRatio
-  canvas.height = rect.height * window.devicePixelRatio
-  ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
-  
-  // 计算绘图区域
-  const padding = 40
-  const chartWidth = rect.width - padding * 2
-  const chartHeight = rect.height - padding * 2
+    // 设置画布尺寸
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * window.devicePixelRatio
+    canvas.height = rect.height * window.devicePixelRatio
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+    
+    // 检测移动端
+    const isMobile = window.innerWidth <= 768
+    const isSmallMobile = window.innerWidth <= 480
+    
+    // 根据屏幕尺寸调整参数
+    const padding = isMobile ? (isSmallMobile ? 20 : 30) : 40
+    const chartWidth = rect.width - padding * 2
+    const chartHeight = rect.height - padding * 2
   
   // 计算价格范围
   const allPrices = [...currentPrices, ...predictedPrices.filter(p => p !== null && p > 0)]
@@ -369,18 +373,20 @@ const drawChart = (canvas, predictions) => {
   ctx.strokeStyle = '#e5e7eb'
   ctx.lineWidth = 1
   
-  // 水平网格线
-  for (let i = 0; i <= 5; i++) {
-    const y = padding + (chartHeight / 5) * i
+  // 水平网格线 - 移动端减少数量
+  const gridYCount = isMobile ? (isSmallMobile ? 3 : 4) : 5
+  for (let i = 0; i <= gridYCount; i++) {
+    const y = padding + (chartHeight / gridYCount) * i
     ctx.beginPath()
     ctx.moveTo(padding, y)
     ctx.lineTo(padding + chartWidth, y)
     ctx.stroke()
   }
   
-  // 垂直网格线
-  for (let i = 0; i <= labels.length - 1; i++) {
-    const x = padding + (chartWidth / (labels.length - 1)) * i
+  // 垂直网格线 - 移动端减少数量
+  const gridXCount = isMobile ? Math.max(2, Math.floor(labels.length / 2)) : labels.length - 1
+  for (let i = 0; i <= gridXCount; i++) {
+    const x = padding + (chartWidth / gridXCount) * i
     ctx.beginPath()
     ctx.moveTo(x, padding)
     ctx.lineTo(x, padding + chartHeight)
@@ -450,21 +456,57 @@ const drawChart = (canvas, predictions) => {
   
   // 绘制Y轴标签
   ctx.fillStyle = '#6b7280'
-  ctx.font = '12px sans-serif'
+  ctx.font = isMobile ? (isSmallMobile ? '10px sans-serif' : '11px sans-serif') : '12px sans-serif'
   ctx.textAlign = 'right'
   
-  for (let i = 0; i <= 5; i++) {
-    const price = maxPrice - (priceRange / 5) * i
-    const y = padding + (chartHeight / 5) * i + 4
-    ctx.fillText(price.toFixed(2), padding - 10, y)
+  // 移动端减少Y轴标签数量
+  const yLabelCount = isMobile ? (isSmallMobile ? 3 : 4) : 5
+  
+  for (let i = 0; i <= yLabelCount; i++) {
+    const price = maxPrice - (priceRange / yLabelCount) * i
+    const y = padding + (chartHeight / yLabelCount) * i + 4
+    
+    // 移动端简化价格显示
+    let priceText
+    if (isSmallMobile) {
+      priceText = price.toFixed(0) // 小屏只显示整数
+    } else if (isMobile) {
+      priceText = price.toFixed(1) // 中屏显示一位小数
+    } else {
+      priceText = price.toFixed(2) // 大屏显示两位小数
+    }
+    
+    ctx.fillText(priceText, padding - 5, y)
   }
   
   // 绘制X轴标签
   ctx.textAlign = 'center'
+  ctx.font = isMobile ? (isSmallMobile ? '9px sans-serif' : '10px sans-serif') : '12px sans-serif'
+  
+  // 移动端减少X轴标签数量，避免重叠
+  const xLabelStep = isMobile ? Math.max(1, Math.floor(labels.length / (isSmallMobile ? 3 : 4))) : 1
+  
   labels.forEach((label, index) => {
-    const x = padding + (chartWidth / (labels.length - 1)) * index
-    const y = padding + chartHeight + 20
-    ctx.fillText(label, x, y)
+    // 只在指定间隔显示标签
+    if (index % xLabelStep === 0 || index === labels.length - 1) {
+      const x = padding + (chartWidth / (labels.length - 1)) * index
+      const y = padding + chartHeight + (isMobile ? 15 : 20)
+      
+      // 移动端简化日期显示
+      let labelText
+      if (isSmallMobile) {
+        // 小屏只显示月-日
+        labelText = label.split('-').slice(1).join('-')
+      } else if (isMobile) {
+        // 中屏显示月-日
+        labelText = label.split('-').slice(1).join('-')
+      } else {
+        // 大屏显示完整日期
+        labelText = label
+      }
+      
+      ctx.fillText(labelText, x, y)
+    }
   })
   
   } catch (error) {
