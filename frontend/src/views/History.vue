@@ -114,7 +114,7 @@
           </div>
           <div class="legend-item">
             <div class="legend-color predicted"></div>
-            <span>预测价格（后移一天）</span>
+            <span>预测价格</span>
           </div>
         </div>
         
@@ -319,12 +319,12 @@ const processChartData = (predictions) => {
     labels.push(date)
     currentPrices.push(prediction.current || 0)
     
-    // 预测价格后移一天：使用下一个预测的当前价格作为这个预测的验证
-    if (index < sortedPredictions.length - 1) {
-      const nextPrediction = sortedPredictions[index + 1]
-      predictedPrices.push(nextPrediction.current || 0)
+    // 预测价格前移一天：今天的预测价格展示在明天的时间轴上
+    if (index > 0) {
+      const prevPrediction = sortedPredictions[index - 1]
+      predictedPrices.push(prevPrediction.predicted || 0)
     } else {
-      // 最后一个预测没有对应的验证数据
+      // 第一个预测没有对应的前一天预测数据
       predictedPrices.push(null)
     }
   })
