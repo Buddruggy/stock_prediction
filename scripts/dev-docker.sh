@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 智投预测 - Docker开发环境脚本
+# gogotou - Docker开发环境脚本
 
-echo "🐳 智投预测 - Docker开发环境"
+echo "🐳 gogotou - Docker开发环境"
 echo "=========================================="
 
 # 检查Docker是否运行

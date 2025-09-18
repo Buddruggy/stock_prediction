@@ -1,4 +1,4 @@
-# 智投预测 - API文档
+# gogotou - API文档
 
 ## 📚 API接口说明
 

@@ -1,7 +1,7 @@
-# 智投预测 - AI股市指数预测平台
+# gogotou - AI股市指数预测平台
 
 <div align="center">
-  <img src="frontend/public/logo.svg" alt="智投预测Logo" width="200">
+  <img src="frontend/public/logo.svg" alt="gogotou Logo" width="200">
   
   **基于人工智能的中国股票指数预测平台**
   

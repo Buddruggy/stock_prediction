@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 智投预测 - Docker部署脚本
+# gogotou - Docker部署脚本
 
-echo "🐳 智投预测 - AI股市指数预测平台"
+echo "🐳 gogotou - AI股市指数预测平台"
 echo "=========================================="
 
 # 检查Docker是否安装
