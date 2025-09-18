@@ -51,7 +51,7 @@
       <div class="claude-container">
         <div class="footer-content">
           <div class="footer-info">
-            <span class="copyright">&copy; 2024 <span class="footer-logo">GoGoTou</span></span>
+            <span class="copyright">&copy; 2025 <span class="footer-logo">GoGoTou</span></span>
             <span class="divider">•</span>
             <span class="disclaimer">投资需谨慎</span>
           </div>

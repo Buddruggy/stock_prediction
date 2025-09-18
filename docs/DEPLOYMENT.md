@@ -136,7 +136,7 @@ curl http://localhost:9000/api/status
   "status": "running",
   "ml_available": true,
   "supported_indices": 4,
-  "timestamp": "2024-01-01T12:00:00.000000"
+  "timestamp": "2025-01-01T12:00:00.000000"
 }
 ```
 

@@ -97,7 +97,7 @@ GET    /api/v1/health            # 健康检查
   "data": {
     // 实际数据
   },
-  "timestamp": "2024-01-01T12:00:00Z"
+  "timestamp": "2025-01-01T12:00:00Z"
 }
 ```
 
