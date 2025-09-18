@@ -356,7 +356,7 @@ const drawChart = (canvas, predictions) => {
     const isSmallMobile = window.innerWidth <= 480
     
     // 根据屏幕尺寸调整参数
-    const padding = isMobile ? (isSmallMobile ? 20 : 30) : 40
+    const padding = isMobile ? (isSmallMobile ? 30 : 40) : 50
     const chartWidth = rect.width - padding * 2
     const chartHeight = rect.height - padding * 2
   
@@ -476,7 +476,7 @@ const drawChart = (canvas, predictions) => {
       priceText = price.toFixed(2) // 大屏显示两位小数
     }
     
-    ctx.fillText(priceText, padding - 5, y)
+    ctx.fillText(priceText, padding - 8, y)
   }
   
   // 绘制X轴标签
@@ -490,7 +490,7 @@ const drawChart = (canvas, predictions) => {
     // 只在指定间隔显示标签
     if (index % xLabelStep === 0 || index === labels.length - 1) {
       const x = padding + (chartWidth / (labels.length - 1)) * index
-      const y = padding + chartHeight + (isMobile ? 15 : 20)
+      const y = padding + chartHeight + (isMobile ? 20 : 25)
       
       // 移动端简化日期显示
       let labelText
@@ -738,7 +738,7 @@ onMounted(() => {
     padding: 0;
     box-shadow: var(--claude-shadow);
     margin-bottom: var(--claude-space-xl);
-    overflow: hidden;
+    overflow: visible;
     
     .chart-header {
       padding: var(--claude-space-lg);
@@ -769,20 +769,21 @@ onMounted(() => {
     }
     
     .chart-container {
-      padding: var(--claude-space-lg);
+      padding: var(--claude-space-sm);
       position: relative;
+      overflow: visible;
       
       .price-chart {
         width: 100%;
-        height: 400px;
+        height: 450px;
         border-radius: var(--claude-radius);
         
         @media (max-width: 768px) {
-          height: 300px;
+          height: 350px;
         }
         
         @media (max-width: 480px) {
-          height: 250px;
+          height: 300px;
         }
       }
       
