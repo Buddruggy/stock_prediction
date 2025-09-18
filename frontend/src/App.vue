@@ -21,6 +21,7 @@
                   </div>
                 </div>
               </div>
+              <span class="brand-text">GoGoTou</span>
             </h1>
           </div>
           
@@ -112,19 +113,19 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.4rem 0; /* 适度增加内边距 */
-    min-height: 40px; /* 适度增加高度 */
+    padding: 0.8rem 0; /* 增加内边距 */
+    min-height: 60px; /* 增加高度 */
     
     @media (max-width: 768px) {
       flex-direction: row;
       gap: var(--claude-space-sm);
-      padding: 0.3rem 0;
-      min-height: 36px;
+      padding: 0.6rem 0;
+      min-height: 50px;
     }
     
     @media (max-width: 480px) {
-      min-height: 32px;
-      padding: 0.25rem 0;
+      min-height: 45px;
+      padding: 0.5rem 0;
     }
   }
   
@@ -136,6 +137,9 @@ body {
   
   .brand-title {
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     
     .dog-logo {
       display: flex;
@@ -263,6 +267,22 @@ body {
     
     @media (max-width: 480px) {
       font-size: 1.5rem;
+    }
+  }
+  
+  .brand-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--claude-text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.025em;
+    
+    @media (max-width: 768px) {
+      font-size: 1.25rem;
+    }
+    
+    @media (max-width: 480px) {
+      font-size: 1.1rem;
     }
   }
 
