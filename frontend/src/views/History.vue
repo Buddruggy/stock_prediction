@@ -83,8 +83,9 @@
 
     <!-- 历史数据图表 -->
     <div v-else class="history-charts">
-      <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="chart-section">
-        <div class="chart-header">
+      <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="chart-wrapper">
+        <!-- 图表标题和统计信息 -->
+        <div class="chart-header-section">
           <h3 class="chart-title">{{ getIndexName(indexCode) }}</h3>
           <div class="chart-stats">
             <span class="stat-item">记录数: {{ predictions.length }}</span>
@@ -92,7 +93,8 @@
           </div>
         </div>
         
-        <div class="chart-container">
+        <!-- 独立的图表区域 -->
+        <div class="chart-area">
           <canvas 
             :ref="el => setChartRef(el, indexCode)" 
             class="price-chart"
@@ -731,19 +733,14 @@ onMounted(() => {
 }
 
 .history-charts {
-  .chart-section {
-    background: var(--claude-bg-primary);
-    border: 1px solid var(--claude-border);
-    border-radius: var(--claude-radius-lg);
-    padding: 0;
-    box-shadow: var(--claude-shadow);
+  .chart-wrapper {
     margin-bottom: var(--claude-space-xl);
-    overflow: visible;
     
-    .chart-header {
+    .chart-header-section {
+      background: var(--claude-bg-primary);
+      border: 1px solid var(--claude-border);
+      border-radius: var(--claude-radius-lg) var(--claude-radius-lg) 0 0;
       padding: var(--claude-space-lg);
-      border-bottom: 1px solid var(--claude-border);
-      background: var(--claude-bg-tertiary);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -768,36 +765,38 @@ onMounted(() => {
       }
     }
     
-    .chart-container {
-      padding: var(--claude-space-sm);
+    .chart-area {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      padding: 0;
       position: relative;
       overflow: visible;
       
       .price-chart {
         width: 100%;
-        height: 450px;
-        border-radius: var(--claude-radius);
+        height: 500px;
+        display: block;
         
         @media (max-width: 768px) {
-          height: 350px;
+          height: 400px;
         }
         
         @media (max-width: 480px) {
-          height: 300px;
+          height: 350px;
         }
       }
       
       .chart-fallback {
         position: absolute;
-        top: var(--claude-space-lg);
-        left: var(--claude-space-lg);
-        right: var(--claude-space-lg);
-        bottom: var(--claude-space-lg);
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--claude-bg-secondary);
-        border-radius: var(--claude-radius);
         
         .fallback-message {
           text-align: center;
@@ -812,8 +811,12 @@ onMounted(() => {
     }
     
     .chart-legend {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      border-bottom: 1px solid var(--claude-border);
+      border-radius: 0 0 var(--claude-radius-lg) var(--claude-radius-lg);
       padding: var(--claude-space-lg);
-      padding-top: 0;
       display: flex;
       gap: var(--claude-space-xl);
       justify-content: center;
@@ -855,8 +858,12 @@ onMounted(() => {
     }
     
     .fallback-table {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      border-bottom: 1px solid var(--claude-border);
+      border-radius: 0 0 var(--claude-radius-lg) var(--claude-radius-lg);
       padding: var(--claude-space-lg);
-      border-top: 1px solid var(--claude-border);
       
       h4 {
         margin: 0 0 var(--claude-space-lg) 0;
