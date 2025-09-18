@@ -20,7 +20,10 @@
           <!-- 卡片头部 -->
           <div class="card-header">
             <div class="index-info">
-              <h3 class="index-name">{{ prediction.name }}</h3>
+              <div class="index-name-row">
+                <h3 class="index-name">{{ prediction.name }}</h3>
+                <span class="confidence-badge">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
+              </div>
               <span class="index-code">{{ code.toUpperCase() }}</span>
             </div>
             <div class="trend-badge" :class="getTrendClass(prediction.change)">
@@ -39,32 +42,14 @@
               <div class="price-item predicted-price">
                 <span class="price-label">预测价格</span>
                 <span class="price-value">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
-              </div>
-            </div>
-            
-            <div class="change-section">
-              <div class="change-item">
-                <span class="change-label">预测涨跌</span>
-                <span 
-                  class="change-value" 
-                  :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
-                >
-                  {{ formatChange(prediction.change, prediction.changePercent) }}
-                </span>
-              </div>
-            </div>
-            
-            <div class="confidence-section">
-              <div class="confidence-header">
-                <span class="confidence-label">预测置信度</span>
-                <span class="confidence-percentage">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
-              </div>
-              <div class="confidence-bar">
-                <div 
-                  class="confidence-fill" 
-                  :style="{ width: (prediction.confidence || 0) + '%' }"
-                  :class="getConfidenceClass(prediction.confidence)"
-                ></div>
+                <div class="change-info">
+                  <span 
+                    class="change-value" 
+                    :class="{ positive: prediction.change > 0, negative: prediction.change < 0 }"
+                  >
+                    {{ formatChange(prediction.change, prediction.changePercent) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -274,12 +259,15 @@ onMounted(() => {
 .predictions-section {
   .predictions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: var(--claude-space-lg); /* 缩小网格间距 */
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--claude-space-lg);
+    max-width: 1000px;
+    margin: 0 auto;
     
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
       gap: var(--claude-space);
+      max-width: 400px;
     }
   }
 }
@@ -287,7 +275,7 @@ onMounted(() => {
 // 预测卡片
 .prediction-card {
   @include claude-card;
-  padding: var(--claude-space-xl); /* 缩小卡片内边距 */
+  padding: var(--claude-space-lg);
   transition: var(--claude-transition);
   animation: claude-fade-in 0.6s ease-out;
   position: relative;
@@ -332,20 +320,42 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--claude-space-lg); /* 缩小间距 */
+  margin-bottom: var(--claude-space);
   
   .index-info {
     flex: 1;
+  }
+  
+  .index-name-row {
+    display: flex;
+    align-items: center;
+    gap: var(--claude-space-sm);
+    margin-bottom: var(--claude-space-sm);
   }
   
   .index-name {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--claude-text-primary);
-    margin: 0 0 var(--claude-space-sm) 0;
+    margin: 0;
     
     @media (max-width: 480px) {
       font-size: 1.25rem;
+    }
+  }
+  
+  .confidence-badge {
+    background: var(--claude-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--claude-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--claude-font-mono);
+    
+    @media (max-width: 480px) {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.4rem;
     }
   }
   
@@ -395,13 +405,12 @@ onMounted(() => {
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: var(--claude-space); /* 缩小内部间距 */
 }
 
 .price-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--claude-space); /* 缩小间距 */
+  gap: var(--claude-space);
   
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
@@ -410,7 +419,7 @@ onMounted(() => {
   
   .price-item {
     text-align: center;
-    padding: var(--claude-space); /* 缩小内边距 */
+    padding: var(--claude-space);
     background: var(--claude-bg-tertiary);
     border-radius: var(--claude-radius-lg);
     
@@ -418,24 +427,47 @@ onMounted(() => {
       display: block;
       font-size: 0.9rem;
       color: var(--claude-text-secondary);
-      margin-bottom: var(--claude-space-xs); /* 缩小间距 */
+      margin-bottom: var(--claude-space-xs);
       font-weight: 500;
     }
     
     .price-value {
       display: block;
-      font-size: 1.75rem;
+      font-size: 1.5rem;
       font-weight: 600;
       font-family: var(--claude-font-mono);
       color: var(--claude-text-primary);
+      margin-bottom: var(--claude-space-xs);
       
       @media (max-width: 480px) {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
       }
     }
     
     &.predicted-price .price-value {
       color: var(--claude-primary);
+    }
+    
+    .change-info {
+      margin-top: var(--claude-space-xs);
+      
+      .change-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        font-family: var(--claude-font-mono);
+        
+        &.positive {
+          color: var(--claude-success);
+        }
+        
+        &.negative {
+          color: var(--claude-danger);
+        }
+        
+        @media (max-width: 480px) {
+          font-size: 0.8rem;
+        }
+      }
     }
     
     @media (max-width: 480px) {
@@ -444,90 +476,7 @@ onMounted(() => {
   }
 }
 
-.change-section {
-  text-align: center;
-  padding: var(--claude-space-lg);
-  background: var(--claude-bg-secondary);
-  border-radius: var(--claude-radius-lg);
-  
-  .change-label {
-    display: block;
-    font-size: 0.9rem;
-    color: var(--claude-text-secondary);
-    margin-bottom: var(--claude-space-sm);
-    font-weight: 500;
-  }
-  
-  .change-value {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 600;
-    font-family: var(--claude-font-mono);
-    
-    &.positive {
-      color: var(--claude-success);
-    }
-    
-    &.negative {
-      color: var(--claude-danger);
-    }
-    
-    @media (max-width: 480px) {
-      font-size: 1.125rem;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    padding: var(--claude-space);
-  }
-}
 
-.confidence-section {
-  .confidence-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--claude-space);
-    
-    .confidence-label {
-      font-size: 0.9rem;
-      color: var(--claude-text-secondary);
-      font-weight: 500;
-    }
-    
-    .confidence-percentage {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--claude-primary);
-      font-family: var(--claude-font-mono);
-    }
-  }
-  
-  .confidence-bar {
-    height: 12px;
-    background: var(--claude-bg-tertiary);
-    border-radius: var(--claude-radius);
-    overflow: hidden;
-    
-    .confidence-fill {
-      height: 100%;
-      border-radius: var(--claude-radius);
-      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-      
-      &.high {
-        background: linear-gradient(90deg, var(--claude-success), #34d399);
-      }
-      
-      &.medium {
-        background: linear-gradient(90deg, var(--claude-warning), #fbbf24);
-      }
-      
-      &.low {
-        background: linear-gradient(90deg, var(--claude-danger), #f87171);
-      }
-    }
-  }
-}
 
 // 状态组件
 .status-section {
