@@ -15,16 +15,14 @@
           v-for="(prediction, code) in predictions" 
           :key="code"
           class="prediction-card"
-          :class="{ 'high-confidence': prediction.confidence > 80 }"
         >
           <!-- 卡片头部 -->
           <div class="card-header">
             <div class="index-info">
               <div class="index-name-row">
                 <h3 class="index-name">{{ prediction.name }}</h3>
-                <span class="confidence-badge">{{ prediction.confidence?.toFixed(0) || '--' }}%</span>
+                <span class="index-code">{{ code.toUpperCase() }}</span>
               </div>
-              <span class="index-code">{{ code.toUpperCase() }}</span>
             </div>
             <div class="trend-badge" :class="getTrendClass(prediction.change)">
               <span class="trend-value">{{ getTrendText(prediction.change) }}</span>
@@ -120,13 +118,6 @@ const getTrendText = (change) => {
   if (change > 0) return '看涨'
   if (change < 0) return '看跌'
   return '持平'
-}
-
-// 获取置信度类名
-const getConfidenceClass = (confidence) => {
-  if (confidence >= 80) return 'high'
-  if (confidence >= 60) return 'medium'
-  return 'low'
 }
 
 // 支持的指数列表
@@ -302,15 +293,6 @@ onMounted(() => {
     }
   }
   
-  &.high-confidence {
-    border-color: var(--claude-success);
-    
-    &::before {
-      background: linear-gradient(90deg, var(--claude-success), var(--claude-accent));
-      opacity: 1;
-    }
-  }
-  
   @media (max-width: 480px) {
     padding: var(--claude-space-lg);
   }
@@ -330,7 +312,6 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: var(--claude-space-sm);
-    margin-bottom: var(--claude-space-sm);
   }
   
   .index-name {
@@ -344,20 +325,6 @@ onMounted(() => {
     }
   }
   
-  .confidence-badge {
-    background: var(--claude-primary);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--claude-radius);
-    font-size: 0.75rem;
-    font-weight: 600;
-    font-family: var(--claude-font-mono);
-    
-    @media (max-width: 480px) {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.4rem;
-    }
-  }
   
   .index-code {
     display: inline-block;
