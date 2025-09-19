@@ -39,14 +39,6 @@
       </div>
       
       <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ avgConfidence }}%</div>
-          <div class="stat-label">平均置信度</div>
-        </div>
-      </div>
-      
-      <div class="stat-card">
         <div class="stat-icon">📈</div>
         <div class="stat-content">
           <div class="stat-number">{{ Object.keys(historicalData).length }}</div>
@@ -81,64 +73,51 @@
       </div>
     </div>
 
-    <!-- 历史数据表格 -->
-    <div v-else class="history-tables">
-      <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="table-section">
-        <div class="table-header">
-          <h3 class="table-title">{{ getIndexName(indexCode) }}</h3>
-          <div class="table-stats">
-            <span class="stat-item">记录数: {{ predictions.length }}</span>
-            <span class="stat-item">平均置信度: {{ getAvgConfidence(predictions) }}%</span>
+    <!-- 历史数据图表 -->
+    <div v-else class="history-charts">
+      <div v-for="(predictions, indexCode) in historicalData" :key="indexCode" class="chart-wrapper">
+        <!-- 图表标题和统计信息 -->
+        <div class="chart-header-section">
+          <h3 class="chart-title">{{ getIndexName(indexCode) }}</h3>
+        </div>
+        
+        <!-- 独立的图表区域 -->
+        <div class="chart-area">
+          <canvas 
+            :ref="el => setChartRef(el, indexCode)" 
+            class="price-chart"
+          ></canvas>
+          
+          <!-- 备用显示：如果图表加载失败 -->
+          <div v-if="!charts[indexCode]" class="chart-fallback">
+            <div class="fallback-message">
+              <p>图表加载中...</p>
+            </div>
           </div>
         </div>
         
-        <div class="table-container">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>预测日期</th>
-                <th>当前价格</th>
-                <th>预测价格</th>
-                <th>预测涨跌额</th>
-                <th>预测涨跌幅</th>
-                <th>置信度</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="prediction in predictions" :key="prediction.id || prediction.timestamp" class="table-row">
-                <td class="date-cell">{{ formatDate(prediction.timestamp || prediction.prediction_date) }}</td>
-                <td class="price-cell">{{ prediction.current?.toFixed(2) || '--' }}</td>
-                <td class="price-cell predicted">{{ prediction.predicted?.toFixed(2) || '--' }}</td>
-                <td class="change-cell" :class="getChangeClass(prediction.change)">
-                  {{ formatChange(prediction.change) }}
-                </td>
-                <td class="percent-cell" :class="getChangeClass(prediction.changePercent)">
-                  {{ formatPercent(prediction.changePercent) }}
-                </td>
-                <td class="confidence-cell">
-                  <div class="confidence-bar-container">
-                    <div 
-                      class="confidence-bar"
-                      :class="getConfidenceClass(prediction.confidence)"
-                      :style="{ width: `${prediction.confidence || 0}%` }"
-                    ></div>
-                    <span class="confidence-text">{{ prediction.confidence?.toFixed(1) || '0' }}%</span>
-                  </div>
-                </td>
-                <td>
-                  <button 
-                    @click="showIndicators(prediction)"
-                    class="indicators-button"
-                    v-if="prediction.technical_indicators"
-                  >
-                    查看技术指标
-                  </button>
-                  <span v-else class="text-muted">无数据</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- 图表说明 -->
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-color current"></div>
+            <span>当前价格</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color predicted"></div>
+            <span>预测价格</span>
+          </div>
+        </div>
+        
+        <!-- 备用数据表格（如果图表失败） -->
+        <div v-if="showFallbackTable" class="fallback-table">
+          <h4>数据概览</h4>
+          <div class="simple-data-list">
+            <div v-for="(prediction, index) in predictions.slice(0, 5)" :key="index" class="data-item">
+              <span class="date">{{ formatDate(prediction.timestamp || prediction.prediction_date) }}</span>
+              <span class="current-price">{{ prediction.current?.toFixed(2) || '--' }}</span>
+              <span class="predicted-price">{{ prediction.predicted?.toFixed(2) || '--' }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -169,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import axios from 'axios'
 
 // 响应式数据
@@ -180,6 +159,15 @@ const selectedIndex = ref('all')
 const selectedDays = ref(30)
 const showModal = ref(false)
 const selectedPrediction = ref(null)
+const charts = ref({})
+const showFallbackTable = ref(false)
+
+// 设置图表引用
+const setChartRef = (el, indexCode) => {
+  if (el) {
+    charts.value[indexCode] = el
+  }
+}
 
 // 指数名称映射
 const indexNames = {
@@ -198,22 +186,6 @@ const totalPredictions = computed(() => {
   return Object.values(historicalData.value).reduce((total, predictions) => {
     return total + (predictions?.length || 0)
   }, 0)
-})
-
-const avgConfidence = computed(() => {
-  let totalConfidence = 0
-  let count = 0
-  
-  Object.values(historicalData.value).forEach(predictions => {
-    predictions?.forEach(prediction => {
-      if (prediction.confidence) {
-        totalConfidence += prediction.confidence
-        count++
-      }
-    })
-  })
-  
-  return count > 0 ? (totalConfidence / count).toFixed(1) : '0'
 })
 
 // 方法
@@ -281,16 +253,6 @@ const getConfidenceClass = (confidence) => {
   return 'low'
 }
 
-const getAvgConfidence = (predictions) => {
-  if (!predictions || predictions.length === 0) return '0'
-  
-  const total = predictions.reduce((sum, pred) => {
-    return sum + (pred.confidence || 0)
-  }, 0)
-  
-  return (total / predictions.length).toFixed(1)
-}
-
 const showIndicators = (prediction) => {
   selectedPrediction.value = prediction
   showModal.value = true
@@ -300,6 +262,262 @@ const closeModal = () => {
   showModal.value = false
   selectedPrediction.value = null
 }
+
+// 处理图表数据：预测价格后移一天
+const processChartData = (predictions) => {
+  if (!predictions || predictions.length === 0) return { labels: [], currentPrices: [], predictedPrices: [] }
+  
+  // 按日期排序
+  const sortedPredictions = [...predictions].sort((a, b) => {
+    const dateA = new Date(a.timestamp || a.prediction_date)
+    const dateB = new Date(b.timestamp || b.prediction_date)
+    return dateA - dateB
+  })
+  
+  const labels = []
+  const currentPrices = []
+  const predictedPrices = []
+  
+  sortedPredictions.forEach((prediction, index) => {
+    const date = formatDate(prediction.timestamp || prediction.prediction_date)
+    labels.push(date)
+    currentPrices.push(prediction.current || 0)
+    
+    // 预测价格前移一天：今天的预测价格展示在明天的时间轴上
+    if (index > 0) {
+      const prevPrediction = sortedPredictions[index - 1]
+      predictedPrices.push(prevPrediction.predicted || 0)
+    } else {
+      // 第一个预测没有对应的前一天预测数据
+      predictedPrices.push(null)
+    }
+  })
+  
+  return { labels, currentPrices, predictedPrices }
+}
+
+// 绘制折线图
+const drawChart = (canvas, predictions) => {
+  if (!canvas || !predictions || predictions.length === 0) return
+  
+  try {
+    const ctx = canvas.getContext('2d')
+    const { labels, currentPrices, predictedPrices } = processChartData(predictions)
+    
+    // 清除画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    if (labels.length === 0) return
+  
+    // 设置画布尺寸
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * window.devicePixelRatio
+    canvas.height = rect.height * window.devicePixelRatio
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+    
+    // 检测移动端
+    const isMobile = window.innerWidth <= 768
+    const isSmallMobile = window.innerWidth <= 480
+    
+    // 根据屏幕尺寸调整参数 - 增加左右边距确保Y轴标签完全显示
+    const padding = isMobile ? (isSmallMobile ? 50 : 60) : 80
+    const chartWidth = rect.width - padding * 2
+    const chartHeight = rect.height - padding * 2
+  
+  // 计算价格范围
+  const allPrices = [...currentPrices, ...predictedPrices.filter(p => p !== null && p > 0)]
+  if (allPrices.length === 0) return
+  
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
+  const priceRange = maxPrice - minPrice
+  const pricePadding = priceRange > 0 ? priceRange * 0.1 : maxPrice * 0.1
+  
+  // 绘制网格
+  ctx.strokeStyle = '#e5e7eb'
+  ctx.lineWidth = 1
+  
+  // 水平网格线 - 移动端减少数量
+  const gridYCount = isMobile ? (isSmallMobile ? 3 : 4) : 5
+  for (let i = 0; i <= gridYCount; i++) {
+    const y = padding + (chartHeight / gridYCount) * i
+    ctx.beginPath()
+    ctx.moveTo(padding, y)
+    ctx.lineTo(padding + chartWidth, y)
+    ctx.stroke()
+  }
+  
+  // 垂直网格线 - 移动端减少数量
+  const gridXCount = isMobile ? Math.max(2, Math.floor(labels.length / 2)) : labels.length - 1
+  for (let i = 0; i <= gridXCount; i++) {
+    const x = padding + (chartWidth / gridXCount) * i
+    ctx.beginPath()
+    ctx.moveTo(x, padding)
+    ctx.lineTo(x, padding + chartHeight)
+    ctx.stroke()
+  }
+  
+  // 绘制当前价格线
+  ctx.strokeStyle = '#3b82f6'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  
+  currentPrices.forEach((price, index) => {
+    const x = padding + (chartWidth / (labels.length - 1)) * index
+    const y = padding + chartHeight - ((price - minPrice + pricePadding) / (priceRange + pricePadding * 2)) * chartHeight
+    
+    if (index === 0) {
+      ctx.moveTo(x, y)
+    } else {
+      ctx.lineTo(x, y)
+    }
+  })
+  ctx.stroke()
+  
+  // 绘制预测价格线
+  ctx.strokeStyle = '#ef4444'
+  ctx.lineWidth = 3
+  ctx.setLineDash([5, 5])
+  ctx.beginPath()
+  
+  predictedPrices.forEach((price, index) => {
+    if (price !== null) {
+      const x = padding + (chartWidth / (labels.length - 1)) * index
+      const y = padding + chartHeight - ((price - minPrice + pricePadding) / (priceRange + pricePadding * 2)) * chartHeight
+      
+      if (index === 0) {
+        ctx.moveTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+    }
+  })
+  ctx.stroke()
+  ctx.setLineDash([])
+  
+  // 绘制数据点
+  ctx.fillStyle = '#3b82f6'
+  currentPrices.forEach((price, index) => {
+    const x = padding + (chartWidth / (labels.length - 1)) * index
+    const y = padding + chartHeight - ((price - minPrice + pricePadding) / (priceRange + pricePadding * 2)) * chartHeight
+    
+    ctx.beginPath()
+    ctx.arc(x, y, 4, 0, 2 * Math.PI)
+    ctx.fill()
+  })
+  
+  ctx.fillStyle = '#ef4444'
+  predictedPrices.forEach((price, index) => {
+    if (price !== null) {
+      const x = padding + (chartWidth / (labels.length - 1)) * index
+      const y = padding + chartHeight - ((price - minPrice + pricePadding) / (priceRange + pricePadding * 2)) * chartHeight
+      
+      ctx.beginPath()
+      ctx.arc(x, y, 4, 0, 2 * Math.PI)
+      ctx.fill()
+    }
+  })
+  
+  // 绘制Y轴标签
+  ctx.fillStyle = '#6b7280'
+  ctx.font = isMobile ? (isSmallMobile ? '10px sans-serif' : '11px sans-serif') : '12px sans-serif'
+  ctx.textAlign = 'right'
+  
+  // 移动端减少Y轴标签数量
+  const yLabelCount = isMobile ? (isSmallMobile ? 3 : 4) : 5
+  
+  for (let i = 0; i <= yLabelCount; i++) {
+    const price = maxPrice - (priceRange / yLabelCount) * i
+    const y = padding + (chartHeight / yLabelCount) * i + 4
+    
+    // 移动端简化价格显示
+    let priceText
+    if (isSmallMobile) {
+      priceText = price.toFixed(0) // 小屏只显示整数
+    } else if (isMobile) {
+      priceText = price.toFixed(1) // 中屏显示一位小数
+    } else {
+      priceText = price.toFixed(2) // 大屏显示两位小数
+    }
+    
+    ctx.fillText(priceText, padding - 15, y)
+  }
+  
+  // 绘制X轴标签
+  ctx.textAlign = 'center'
+  ctx.font = isMobile ? (isSmallMobile ? '9px sans-serif' : '10px sans-serif') : '12px sans-serif'
+  
+  // 移动端减少X轴标签数量，避免重叠
+  const xLabelStep = isMobile ? Math.max(1, Math.floor(labels.length / (isSmallMobile ? 3 : 4))) : 1
+  
+  labels.forEach((label, index) => {
+    // 只在指定间隔显示标签
+    if (index % xLabelStep === 0 || index === labels.length - 1) {
+      const x = padding + (chartWidth / (labels.length - 1)) * index
+      const y = padding + chartHeight + (isMobile ? 25 : 30)
+      
+      // 移动端简化日期显示
+      let labelText
+      if (isSmallMobile) {
+        // 小屏只显示月-日
+        labelText = label.split('-').slice(1).join('-')
+      } else if (isMobile) {
+        // 中屏显示月-日
+        labelText = label.split('-').slice(1).join('-')
+      } else {
+        // 大屏显示完整日期
+        labelText = label
+      }
+      
+      ctx.fillText(labelText, x, y)
+    }
+  })
+  
+  } catch (error) {
+    console.error('绘制图表时出错:', error)
+  }
+}
+
+// 初始化所有图表
+const initCharts = async () => {
+  try {
+    await nextTick()
+    
+    console.log('初始化图表，数据:', historicalData.value)
+    
+    let hasValidCharts = false
+    
+    Object.keys(historicalData.value).forEach(indexCode => {
+      const canvas = charts.value[indexCode]
+      const predictions = historicalData.value[indexCode]
+      
+      console.log(`处理指数 ${indexCode}:`, { canvas: !!canvas, predictionsCount: predictions?.length })
+      
+      if (canvas && predictions && predictions.length > 0) {
+        try {
+          drawChart(canvas, predictions)
+          hasValidCharts = true
+        } catch (error) {
+          console.error(`绘制指数 ${indexCode} 图表失败:`, error)
+        }
+      } else {
+        console.warn(`跳过指数 ${indexCode}:`, { canvas: !!canvas, predictionsCount: predictions?.length })
+      }
+    })
+    
+    // 如果所有图表都失败了，显示备用表格
+    showFallbackTable.value = !hasValidCharts
+    
+  } catch (error) {
+    console.error('初始化图表时出错:', error)
+    showFallbackTable.value = true
+  }
+}
+
+// 监听数据变化
+watch(historicalData, () => {
+  initCharts()
+}, { deep: true })
 
 // 组件挂载时获取数据
 onMounted(() => {
@@ -476,144 +694,161 @@ onMounted(() => {
   }
 }
 
-.history-tables {
-  .table-section {
-    background: var(--claude-bg-primary);
-    border: 1px solid var(--claude-border);
-    border-radius: var(--claude-radius-lg);
-    padding: 0;
-    box-shadow: var(--claude-shadow);
+.history-charts {
+  .chart-wrapper {
     margin-bottom: var(--claude-space-xl);
-    overflow: hidden;
     
-    .table-header {
+    .chart-header-section {
+      background: var(--claude-bg-primary);
+      border: 1px solid var(--claude-border);
+      border-radius: var(--claude-radius-lg) var(--claude-radius-lg) 0 0;
       padding: var(--claude-space-lg);
-      border-bottom: 1px solid var(--claude-border);
-      background: var(--claude-bg-tertiary);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--claude-space);
+      text-align: center;
       
-      .table-title {
+      .chart-title {
         font-size: 1.2rem;
         font-weight: 600;
         color: var(--claude-text-primary);
         margin: 0;
       }
+    }
+    
+    .chart-area {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      padding: 0;
+      position: relative;
+      overflow: visible;
       
-      .table-stats {
+      .price-chart {
+        width: 100%;
+        height: 500px;
+        display: block;
+        
+        @media (max-width: 768px) {
+          height: 400px;
+        }
+        
+        @media (max-width: 480px) {
+          height: 350px;
+        }
+      }
+      
+      .chart-fallback {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex;
-        gap: var(--claude-space-lg);
+        align-items: center;
+        justify-content: center;
+        background: var(--claude-bg-secondary);
         
-        .stat-item {
-          font-size: 0.9rem;
+        .fallback-message {
+          text-align: center;
           color: var(--claude-text-secondary);
-        }
-      }
-    }
-    
-    .table-container {
-      overflow-x: auto;
-    }
-    
-    .history-table {
-      width: 100%;
-      border-collapse: collapse;
-      
-      th, td {
-        padding: var(--claude-space-lg);
-        text-align: left;
-        border-bottom: 1px solid var(--claude-border);
-      }
-      
-      th {
-        background: var(--claude-bg-tertiary);
-        font-weight: 600;
-        color: var(--claude-text-primary);
-        font-size: 0.9rem;
-        white-space: nowrap;
-      }
-      
-      .table-row {
-        &:hover {
-          background: var(--claude-bg-tertiary);
-        }
-      }
-      
-      .date-cell {
-        font-family: monospace;
-        color: var(--claude-text-secondary);
-      }
-      
-      .price-cell {
-        font-family: monospace;
-        font-weight: 600;
-        
-        &.predicted {
-          color: var(--claude-primary);
-          background: rgba(59, 130, 246, 0.1);
-        }
-      }
-      
-      .change-cell, .percent-cell {
-        font-family: monospace;
-        font-weight: 600;
-        
-        &.positive {
-          color: var(--claude-success);
-        }
-        
-        &.negative {
-          color: var(--claude-danger);
-        }
-      }
-      
-      .confidence-cell {
-        .confidence-bar-container {
-          display: flex;
-          align-items: center;
-          gap: var(--claude-space);
           
-          .confidence-bar {
-            height: 8px;
-            border-radius: 4px;
-            min-width: 40px;
-            max-width: 80px;
-            
-            &.high {
-              background: var(--claude-success);
-            }
-            
-            &.medium {
-              background: var(--claude-warning);
-            }
-            
-            &.low {
-              background: var(--claude-danger);
-            }
+          p {
+            margin: 0;
+            font-size: 1rem;
+          }
+        }
+      }
+    }
+    
+    .chart-legend {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      border-bottom: 1px solid var(--claude-border);
+      border-radius: 0 0 var(--claude-radius-lg) var(--claude-radius-lg);
+      padding: var(--claude-space-lg);
+      display: flex;
+      gap: var(--claude-space-xl);
+      justify-content: center;
+      
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: var(--claude-space-sm);
+        font-size: 0.9rem;
+        color: var(--claude-text-secondary);
+        
+        .legend-color {
+          width: 20px;
+          height: 3px;
+          border-radius: 2px;
+          
+          &.current {
+            background: #3b82f6;
           }
           
-          .confidence-text {
+          &.predicted {
+            background: #ef4444;
+            background-image: repeating-linear-gradient(
+              90deg,
+              #ef4444,
+              #ef4444 5px,
+              transparent 5px,
+              transparent 10px
+            );
+          }
+        }
+      }
+      
+      @media (max-width: 480px) {
+        flex-direction: column;
+        align-items: center;
+        gap: var(--claude-space);
+      }
+    }
+    
+    .fallback-table {
+      background: var(--claude-bg-primary);
+      border-left: 1px solid var(--claude-border);
+      border-right: 1px solid var(--claude-border);
+      border-bottom: 1px solid var(--claude-border);
+      border-radius: 0 0 var(--claude-radius-lg) var(--claude-radius-lg);
+      padding: var(--claude-space-lg);
+      
+      h4 {
+        margin: 0 0 var(--claude-space-lg) 0;
+        color: var(--claude-text-primary);
+        font-size: 1rem;
+      }
+      
+      .simple-data-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--claude-space-sm);
+        
+        .data-item {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: var(--claude-space);
+          padding: var(--claude-space);
+          background: var(--claude-bg-secondary);
+          border-radius: var(--claude-radius);
+          font-size: 0.9rem;
+          
+          .date {
+            color: var(--claude-text-secondary);
             font-family: monospace;
-            font-size: 0.85rem;
+          }
+          
+          .current-price {
+            color: var(--claude-text-primary);
+            font-family: monospace;
             font-weight: 600;
           }
-        }
-      }
-      
-      .indicators-button {
-        background: var(--claude-bg-secondary);
-        color: var(--claude-text-primary);
-        border: 1px solid var(--claude-border);
-        padding: var(--claude-space-sm) var(--claude-space);
-        border-radius: var(--claude-radius);
-        font-size: 0.8rem;
-        cursor: pointer;
-        
-        &:hover {
-          background: var(--claude-bg-tertiary);
+          
+          .predicted-price {
+            color: var(--claude-primary);
+            font-family: monospace;
+            font-weight: 600;
+          }
         }
       }
     }

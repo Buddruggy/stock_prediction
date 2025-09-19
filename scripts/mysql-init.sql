@@ -1,4 +1,4 @@
--- 智投预测数据库初始化脚本
+-- gogotou数据库初始化脚本
 -- 创建用户及赋权
 CREATE USER IF NOT EXISTS 'stock_user'@'%' IDENTIFIED BY 'stock_pass';
 GRANT ALL PRIVILEGES ON stock_prediction.* TO 'stock_user'@'%';

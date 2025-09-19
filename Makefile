@@ -1,4 +1,4 @@
-# 智投预测 - AI股市指数预测平台 Makefile
+# gogotou - AI股市指数预测平台 Makefile
 # 用于构建、打包和部署Docker镜像
 
 # 项目配置
@@ -46,7 +46,7 @@ RESET := \033[0m
 
 ## 显示帮助信息
 help:
-	@echo "$(BLUE)智投预测 - AI股市指数预测平台$(RESET)"
+	@echo "$(BLUE)gogotou - AI股市指数预测平台$(RESET)"
 	@echo "$(BLUE)=========================================$(RESET)"
 	@echo ""
 	@echo "$(GREEN)可用命令:$(RESET)"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 智投预测 - 本地构建脚本
+# gogotou - 本地构建脚本
 # 用于在Docker网络有问题时使用本地Go环境构建
 
 set -e

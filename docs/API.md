@@ -1,4 +1,4 @@
-# 智投预测 - API文档
+# gogotou - API文档
 
 ## 📚 API接口说明
 
@@ -20,7 +20,7 @@
   "status": "running",
   "ml_available": true,
   "supported_indices": 4,
-  "timestamp": "2024-01-01T12:00:00.000000",
+  "timestamp": "2025-01-01T12:00:00.000000",
   "cache_duration": 300
 }
 ```
@@ -69,7 +69,7 @@
   "predictedChange": 22.78,
   "predictedPercent": 0.70,
   "confidence": 78.0,
-  "timestamp": "2024-01-01T12:00:00.000000"
+  "timestamp": "2025-01-01T12:00:00.000000"
 }
 ```
 
@@ -112,7 +112,7 @@
   "name": "上证综合指数",
   "history": [
     {
-      "date": "2024-01-01",
+      "date": "2025-01-01",
       "open": 3240.12,
       "high": 3250.45,
       "low": 3235.67,

@@ -1,7 +1,7 @@
-# 智投预测 - AI股市指数预测平台
+# gogotou - AI股市指数预测平台
 
 <div align="center">
-  <img src="frontend/public/logo.svg" alt="智投预测Logo" width="200">
+  <img src="frontend/public/logo.svg" alt="gogotou Logo" width="200">
   
   **基于人工智能的中国股票指数预测平台**
   
@@ -215,7 +215,7 @@ GET /api/v1/health
 
 ## 🔄 更新日志
 
-### v2.0.0 (2024-01-01)
+### v2.0.0 (2025-01-01)
 - ✨ 重构为Go后端 + Vue.js前端架构
 - 🎯 支持4个主要中国股票指数预测
 - 🤖 集成机器学习预测模型

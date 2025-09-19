@@ -1,30 +1,67 @@
 <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="faviconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    <!-- 主渐变 -->
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 小狗渐变 -->
+    <linearGradient id="dogGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f97316;stop-opacity:1" />
     </linearGradient>
   </defs>
   
-  <!-- 背景 -->
-  <rect x="0" y="0" width="32" height="32" rx="6" ry="6" fill="url(#faviconGradient)"/>
+  <!-- 背景圆形 -->
+  <circle cx="16" cy="16" r="16" fill="url(#mainGradient)"/>
   
-  <!-- 趋势线 -->
-  <g transform="translate(4, 4)">
-    <polyline points="2,20 8,16 14,10 20,6 22,4" 
+  <!-- 小狗头部 -->
+  <g transform="translate(8, 6)">
+    <!-- 小狗耳朵 -->
+    <ellipse cx="4" cy="2" rx="2" ry="4" fill="url(#dogGradient)" transform="rotate(-15 4 2)"/>
+    <ellipse cx="12" cy="2" rx="2" ry="4" fill="url(#dogGradient)" transform="rotate(15 12 2)"/>
+    
+    <!-- 小狗脸部 -->
+    <ellipse cx="8" cy="6" rx="6" ry="4" fill="url(#dogGradient)"/>
+    
+    <!-- 小狗眼睛 -->
+    <circle cx="6" cy="5" r="1" fill="#1f2937"/>
+    <circle cx="10" cy="5" r="1" fill="#1f2937"/>
+    <circle cx="6.2" cy="4.7" r="0.3" fill="#ffffff"/>
+    <circle cx="10.2" cy="4.7" r="0.3" fill="#ffffff"/>
+    
+    <!-- 小狗鼻子 -->
+    <ellipse cx="8" cy="7" rx="0.8" ry="0.6" fill="#1f2937"/>
+    
+    <!-- 小狗嘴巴 -->
+    <path d="M 6.5 7.5 Q 8 8.5 9.5 7.5" stroke="#1f2937" stroke-width="0.8" fill="none"/>
+    
+    <!-- 小狗舌头 -->
+    <ellipse cx="8" cy="8.5" rx="0.6" ry="0.8" fill="#ef4444"/>
+  </g>
+  
+  <!-- 股票图表 - 从小狗旁边延伸 -->
+  <g transform="translate(20, 8)">
+    <!-- 趋势线 -->
+    <polyline points="0,8 3,4 6,0" 
               fill="none" 
-              stroke="white" 
-              stroke-width="2.5" 
+              stroke="#ffffff" 
+              stroke-width="1.5" 
               stroke-linecap="round" 
               stroke-linejoin="round"/>
     
-    <!-- 关键点 -->
-    <circle cx="2" cy="20" r="1.5" fill="white" opacity="0.9"/>
-    <circle cx="8" cy="16" r="1.5" fill="white" opacity="0.9"/>
-    <circle cx="14" cy="10" r="1.5" fill="white" opacity="0.9"/>
-    <circle cx="20" cy="6" r="1.5" fill="white" opacity="0.9"/>
+    <!-- 数据点 -->
+    <circle cx="0" cy="8" r="0.8" fill="#ffffff" opacity="0.9"/>
+    <circle cx="3" cy="4" r="0.8" fill="#ffffff" opacity="0.9"/>
+    <circle cx="6" cy="0" r="1" fill="#ffffff" opacity="0.9"/>
+    
+    <!-- AI标识 -->
+    <circle cx="6" cy="0" r="1.5" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.8"/>
+    <text x="6" y="0.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="1.8" font-weight="bold" fill="#ffffff">AI</text>
   </g>
   
-  <!-- AI标识 -->
-  <text x="16" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="white" opacity="0.8">AI</text>
+  <!-- 中心文字 - GT (GoGoTou缩写) -->
+  <text x="16" y="22" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="3" font-weight="800" fill="#ffffff" opacity="0.9">GT</text>
 </svg>

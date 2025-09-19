@@ -1,4 +1,4 @@
-# 智投预测 - Kubernetes部署配置 (Go后端)
+# gogotou - Kubernetes部署配置 (Go后端)
 apiVersion: apps/v1
 kind: Deployment
 metadata:

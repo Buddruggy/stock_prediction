@@ -1,4 +1,4 @@
-# 智投预测 - AI股市指数预测平台 Docker镜像 (Go后端)
+# gogotou - AI股市指数预测平台 Docker镜像 (Go后端)
 FROM golang:1.21-alpine AS builder
 
 # 设置工作目录
