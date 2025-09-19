@@ -39,14 +39,6 @@
       </div>
       
       <div class="stat-card">
-        <div class="stat-icon">🎯</div>
-        <div class="stat-content">
-          <div class="stat-number">{{ avgConfidence }}%</div>
-          <div class="stat-label">平均置信度</div>
-        </div>
-      </div>
-      
-      <div class="stat-card">
         <div class="stat-icon">📈</div>
         <div class="stat-content">
           <div class="stat-number">{{ Object.keys(historicalData).length }}</div>
@@ -87,10 +79,6 @@
         <!-- 图表标题和统计信息 -->
         <div class="chart-header-section">
           <h3 class="chart-title">{{ getIndexName(indexCode) }}</h3>
-          <div class="chart-stats">
-            <span class="stat-item">记录数: {{ predictions.length }}</span>
-            <span class="stat-item">平均置信度: {{ getAvgConfidence(predictions) }}%</span>
-          </div>
         </div>
         
         <!-- 独立的图表区域 -->
@@ -200,22 +188,6 @@ const totalPredictions = computed(() => {
   }, 0)
 })
 
-const avgConfidence = computed(() => {
-  let totalConfidence = 0
-  let count = 0
-  
-  Object.values(historicalData.value).forEach(predictions => {
-    predictions?.forEach(prediction => {
-      if (prediction.confidence) {
-        totalConfidence += prediction.confidence
-        count++
-      }
-    })
-  })
-  
-  return count > 0 ? (totalConfidence / count).toFixed(1) : '0'
-})
-
 // 方法
 const fetchHistoricalData = async () => {
   loading.value = true
@@ -279,16 +251,6 @@ const getConfidenceClass = (confidence) => {
   if (confidence >= 80) return 'high'
   if (confidence >= 60) return 'medium'
   return 'low'
-}
-
-const getAvgConfidence = (predictions) => {
-  if (!predictions || predictions.length === 0) return '0'
-  
-  const total = predictions.reduce((sum, pred) => {
-    return sum + (pred.confidence || 0)
-  }, 0)
-  
-  return (total / predictions.length).toFixed(1)
 }
 
 const showIndicators = (prediction) => {
@@ -741,27 +703,13 @@ onMounted(() => {
       border: 1px solid var(--claude-border);
       border-radius: var(--claude-radius-lg) var(--claude-radius-lg) 0 0;
       padding: var(--claude-space-lg);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: var(--claude-space);
+      text-align: center;
       
       .chart-title {
         font-size: 1.2rem;
         font-weight: 600;
         color: var(--claude-text-primary);
         margin: 0;
-      }
-      
-      .chart-stats {
-        display: flex;
-        gap: var(--claude-space-lg);
-        
-        .stat-item {
-          font-size: 0.9rem;
-          color: var(--claude-text-secondary);
-        }
       }
     }
     
