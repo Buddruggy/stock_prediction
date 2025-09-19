@@ -357,8 +357,8 @@ const drawChart = (canvas, predictions) => {
     const isMobile = window.innerWidth <= 768
     const isSmallMobile = window.innerWidth <= 480
     
-    // 根据屏幕尺寸调整参数
-    const padding = isMobile ? (isSmallMobile ? 30 : 40) : 50
+    // 根据屏幕尺寸调整参数 - 增加左右边距确保Y轴标签完全显示
+    const padding = isMobile ? (isSmallMobile ? 50 : 60) : 80
     const chartWidth = rect.width - padding * 2
     const chartHeight = rect.height - padding * 2
   
@@ -478,7 +478,7 @@ const drawChart = (canvas, predictions) => {
       priceText = price.toFixed(2) // 大屏显示两位小数
     }
     
-    ctx.fillText(priceText, padding - 8, y)
+    ctx.fillText(priceText, padding - 15, y)
   }
   
   // 绘制X轴标签
@@ -492,7 +492,7 @@ const drawChart = (canvas, predictions) => {
     // 只在指定间隔显示标签
     if (index % xLabelStep === 0 || index === labels.length - 1) {
       const x = padding + (chartWidth / (labels.length - 1)) * index
-      const y = padding + chartHeight + (isMobile ? 20 : 25)
+      const y = padding + chartHeight + (isMobile ? 25 : 30)
       
       // 移动端简化日期显示
       let labelText
