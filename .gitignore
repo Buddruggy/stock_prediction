@@ -168,3 +168,6 @@ backend-go/bin/
 backend-go/tmp/
 backend-go/stock-prediction
 backend-go/main
+
+# WorkBuddy 本地项目记忆（不上库）
+.workbuddy/
