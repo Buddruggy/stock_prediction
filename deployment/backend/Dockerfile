@@ -1,59 +1,27 @@
-# gogotou - AI股市指数预测平台 Docker镜像 (Go后端)
-FROM golang:1.21-alpine AS builder
+# gogotou - AI股市指数预测平台 (Python / FastAPI 后端)
+FROM python:3.13-slim
 
-# 设置工作目录
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    TZ=Asia/Shanghai \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-# 使用国内Alpine镜像源加速包安装
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-    apk add --no-cache git ca-certificates tzdata
+# 安装依赖（requirements 与源码分层缓存）
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# 设置Go代理和模块配置（使用国内镜像源）
-ENV GOPROXY=https://goproxy.cn,direct
-ENV GOSUMDB=off
-ENV GO111MODULE=on
-ENV CGO_ENABLED=0
-ENV GOOS=linux
-ENV GOARCH=amd64
+# 复制后端源码
+COPY backend/ ./
 
-# 复制 go mod 文件
-COPY backend-go/go.mod backend-go/go.sum ./
-
-# 下载依赖（使用详细输出和重试机制）
-RUN go mod download -x || (sleep 5 && go mod download -x) || (sleep 10 && go mod download -x)
-
-# 复制源代码
-COPY backend-go/ .
-
-# 构建应用
-RUN go build -a -installsuffix cgo -ldflags '-w -s' -o main ./cmd/main.go
-
-# 运行阶段
-FROM alpine:latest
-
-# 使用国内Alpine镜像源加速包安装
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-    apk --no-cache add ca-certificates curl tzdata
-
-# 设置时区
-ENV TZ=Asia/Shanghai
-
-# 设置工作目录
-WORKDIR /root/
-
-# 从构建阶段复制二进制文件
-COPY --from=builder /app/main .
-
-# 创建非root用户
-RUN adduser -D -s /bin/sh app && chown -R app:app /root
-USER app
+# SQLite 数据持久化目录（容器卷挂载到此）
+RUN mkdir -p /app/data
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health').status==200 else 1)"
 
-# 暴露端口
-EXPOSE 8000
+EXPOSE 8001
 
-# 运行应用
-CMD ["./main"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001"]

@@ -1,30 +1,5 @@
 services:
-  # MySQL数据库服务
-  mysql:
-    image: mysql:8.0
-    container_name: zhitou-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_DATABASE: stock_prediction
-      MYSQL_USER: stock_user
-      MYSQL_PASSWORD: stock_pass
-      MYSQL_CHARSET: utf8mb4
-      MYSQL_COLLATION: utf8mb4_unicode_ci
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./scripts/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - zhitou-network
-    command: --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
-      timeout: 20s
-      retries: 10
-
-  # 后端服务
+  # 后端服务 (Python / FastAPI)
   backend:
     build:
       context: .
@@ -32,30 +7,25 @@ services:
     container_name: zhitou-prediction-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
-      - PORT=8000
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=123456
-      - DB_NAME=stock_prediction
-      - DB_CHARSET=utf8mb4
+      - PORT=8001
+      - DB_PATH=/app/data/predictions.db
       - ENVIRONMENT=production
-      - TZ=UTC
-    depends_on:
-      mysql:
-        condition: service_healthy
+      - TZ=Asia/Shanghai
+      # DeepSeek key 从宿主机 .env 注入（仅用于自然语言解读，非价格预测）
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+    volumes:
+      - backend_data:/app/data
+      - ./logs:/app/logs
     networks:
       - zhitou-network
-    volumes:
-      - ./logs:/app/logs
 
-  # 前端服务
+  # 前端服务 (Vue + Nginx)
   frontend:
     build:
       context: .
-      dockerfile: deployment/frontend/Dockerfile.https
+      dockerfile: deployment/frontend/Dockerfile
     container_name: zhitou-prediction-frontend
     restart: unless-stopped
     ports:
@@ -72,5 +42,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  backend_data:
     driver: local
